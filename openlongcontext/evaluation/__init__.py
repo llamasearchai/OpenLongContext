@@ -4,16 +4,16 @@ Evaluation modules for OpenLongContext.
 
 # Import main evaluation functions
 try:
-    from .perplexity import calculate_perplexity, PerplexityEvaluator
+    from .perplexity import PerplexityEvaluator, calculate_perplexity
 except ImportError:
     calculate_perplexity = None
     PerplexityEvaluator = None
 
 try:
     from .retrieval_metrics import (
+        RetrievalEvaluator,
         calculate_retrieval_accuracy,
         calculate_retrieval_precision_recall,
-        RetrievalEvaluator
     )
 except ImportError:
     calculate_retrieval_accuracy = None
@@ -22,9 +22,9 @@ except ImportError:
 
 try:
     from .reasoning_metrics import (
+        ReasoningEvaluator,
         calculate_reasoning_accuracy,
         evaluate_chain_of_thought,
-        ReasoningEvaluator
     )
 except ImportError:
     calculate_reasoning_accuracy = None
@@ -32,11 +32,7 @@ except ImportError:
     ReasoningEvaluator = None
 
 try:
-    from .copy_metrics import (
-        calculate_copy_accuracy,
-        calculate_exact_match,
-        CopyTaskEvaluator
-    )
+    from .copy_metrics import CopyTaskEvaluator, calculate_copy_accuracy, calculate_exact_match
 except ImportError:
     calculate_copy_accuracy = None
     calculate_exact_match = None
@@ -60,7 +56,7 @@ copy_metrics = {
 __all__ = [
     "perplexity",
     "retrieval_metrics",
-    "reasoning_metrics", 
+    "reasoning_metrics",
     "copy_metrics",
     "PerplexityEvaluator",
     "RetrievalEvaluator",

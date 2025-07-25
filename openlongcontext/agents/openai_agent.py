@@ -4,16 +4,18 @@ Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
 import asyncio
-from typing import Dict, Any, Optional, List
-import openai
+from typing import Any, Dict, List, Optional
+
 from openai import OpenAI
+
 from .agent_base import AgentBase
+
 
 class OpenAIAgent(AgentBase):
     """OpenAI agent with full SDK integration for advanced AI workflows."""
-    
+
     def __init__(
-        self, 
+        self,
         api_key: str,
         model: str = "gpt-4-turbo-preview",
         name: str = "OpenAI Agent",
@@ -24,27 +26,27 @@ class OpenAIAgent(AgentBase):
         self.client = OpenAI(api_key=api_key)
         self.model = model
         self.system_prompt = self.config.get(
-            "system_prompt", 
+            "system_prompt",
             "You are an advanced AI assistant specialized in processing and analyzing long documents."
         )
         self.max_tokens = self.config.get("max_tokens", 4096)
         self.temperature = self.config.get("temperature", 0.7)
-    
+
     async def execute(self, task: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Execute a task using OpenAI's API."""
         try:
             self.status = "executing"
-            
+
             messages = [
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": task}
             ]
-            
+
             # Add context if provided
             if context:
                 context_str = f"Context: {context}"
                 messages.insert(1, {"role": "system", "content": context_str})
-            
+
             # Make API call
             response = await asyncio.to_thread(
                 self.client.chat.completions.create,
@@ -53,7 +55,7 @@ class OpenAIAgent(AgentBase):
                 max_tokens=self.max_tokens,
                 temperature=self.temperature
             )
-            
+
             result = {
                 "success": True,
                 "response": response.choices[0].message.content,
@@ -64,16 +66,16 @@ class OpenAIAgent(AgentBase):
                 },
                 "model": self.model
             }
-            
+
             self.status = "completed"
             self.add_to_history({
                 "task": task,
                 "result": result,
                 "context": context
             })
-            
+
             return result
-            
+
         except Exception as e:
             self.status = "error"
             error_result = {
@@ -81,38 +83,38 @@ class OpenAIAgent(AgentBase):
                 "error": str(e),
                 "error_type": type(e).__name__
             }
-            
+
             self.add_to_history({
                 "task": task,
                 "result": error_result,
                 "context": context
             })
-            
+
             return error_result
-    
+
     async def process_document(self, document_path: str, task: str) -> Dict[str, Any]:
         """Process a document using OpenAI's API."""
         try:
             # Read document
-            with open(document_path, 'r', encoding='utf-8') as f:
+            with open(document_path, encoding='utf-8') as f:
                 document_content = f.read()
-            
+
             # Truncate if too long (basic handling - could be improved with chunking)
             max_content_length = 8000  # Leave room for task and system prompt
             if len(document_content) > max_content_length:
                 document_content = document_content[:max_content_length] + "...[truncated]"
-            
+
             # Create context with document
             context = {
                 "document_path": document_path,
                 "document_content": document_content
             }
-            
+
             # Execute task with document context
             enhanced_task = f"Based on the following document, {task}\n\nDocument content:\n{document_content}"
-            
+
             return await self.execute(enhanced_task, context)
-            
+
         except FileNotFoundError:
             return {
                 "success": False,
@@ -125,7 +127,7 @@ class OpenAIAgent(AgentBase):
                 "error": str(e),
                 "error_type": type(e).__name__
             }
-    
+
     async def create_assistant(self, instructions: str, tools: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """Create an OpenAI assistant."""
         try:
@@ -136,7 +138,7 @@ class OpenAIAgent(AgentBase):
                 tools=tools or [],
                 model=self.model
             )
-            
+
             return {
                 "success": True,
                 "assistant_id": assistant.id,
@@ -148,7 +150,7 @@ class OpenAIAgent(AgentBase):
                 "error": str(e),
                 "error_type": type(e).__name__
             }
-    
+
     async def run_thread(self, thread_id: str, assistant_id: str) -> Dict[str, Any]:
         """Run a thread with an assistant."""
         try:
@@ -157,7 +159,7 @@ class OpenAIAgent(AgentBase):
                 thread_id=thread_id,
                 assistant_id=assistant_id
             )
-            
+
             # Wait for completion
             while run.status in ['queued', 'in_progress']:
                 await asyncio.sleep(1)
@@ -166,7 +168,7 @@ class OpenAIAgent(AgentBase):
                     thread_id=thread_id,
                     run_id=run.id
                 )
-            
+
             return {
                 "success": True,
                 "run_id": run.id,
@@ -178,4 +180,4 @@ class OpenAIAgent(AgentBase):
                 "success": False,
                 "error": str(e),
                 "error_type": type(e).__name__
-            } 
+            }

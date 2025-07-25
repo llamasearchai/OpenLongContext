@@ -1,24 +1,26 @@
 """Authentication routes."""
-from datetime import datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from .models import (
-    UserCreate, UserResponse, UserUpdate,
-    Token, LoginRequest, 
-    PasswordResetRequest, PasswordResetConfirm, ChangePasswordRequest,
-    APIKeyCreate, APIKeyResponse
-)
-from .dependencies import (
-    CurrentUser, CurrentActiveUser, CurrentVerifiedUser, CurrentSuperuser,
-    get_current_user_optional
-)
-from .services import UserService, SessionService, APIKeyService
-from .jwt import create_email_verification_token
-from .config import auth_config
-from ..database import get_db
 
+from ..database import get_db
+from .config import auth_config
+from .dependencies import CurrentActiveUser, CurrentSuperuser, CurrentUser, CurrentVerifiedUser
+from .jwt import create_email_verification_token
+from .models import (
+    APIKeyCreate,
+    APIKeyResponse,
+    ChangePasswordRequest,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
+from .services import APIKeyService, SessionService, UserService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -30,7 +32,7 @@ async def register(
 ):
     """Register a new user."""
     user_service = UserService(db)
-    
+
     # Create user
     user = user_service.create_user(
         email=user_data.email,
@@ -39,7 +41,7 @@ async def register(
         full_name=user_data.full_name,
         is_verified=not auth_config.email_verification_required  # Auto-verify if not required
     )
-    
+
     # Generate email verification token if required
     if auth_config.email_verification_required:
         verification_token = create_email_verification_token(user.email, user.id)
@@ -49,7 +51,7 @@ async def register(
             **UserResponse.from_orm(user).dict(),
             "verification_token": verification_token  # REMOVE IN PRODUCTION
         }
-    
+
     return UserResponse.from_orm(user)
 
 
@@ -63,7 +65,7 @@ async def login(
     """Login with username/email and password."""
     user_service = UserService(db)
     session_service = SessionService(db)
-    
+
     # Authenticate user
     user = user_service.authenticate_user(form_data.username, form_data.password)
     if not user:
@@ -72,13 +74,13 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account"
         )
-    
+
     # Create session
     access_token, refresh_token = session_service.create_session(
         user=user,
@@ -86,7 +88,7 @@ async def login(
         user_agent=request.headers.get("user-agent"),
         remember_me=form_data.client_id == "remember"  # Hack to pass remember_me
     )
-    
+
     # Set refresh token as HTTP-only cookie
     response.set_cookie(
         key="refresh_token",
@@ -96,7 +98,7 @@ async def login(
         samesite="lax",
         max_age=auth_config.refresh_token_expire_days * 24 * 60 * 60
     )
-    
+
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -116,24 +118,24 @@ async def refresh_token(
     # Get refresh token from cookie if not provided
     if not refresh_token:
         refresh_token = request.cookies.get("refresh_token")
-    
+
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token required"
         )
-    
+
     session_service = SessionService(db)
     tokens = session_service.refresh_session(refresh_token)
-    
+
     if not tokens:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
         )
-    
+
     access_token, new_refresh_token = tokens
-    
+
     # Update refresh token cookie
     response.set_cookie(
         key="refresh_token",
@@ -143,7 +145,7 @@ async def refresh_token(
         samesite="lax",
         max_age=auth_config.refresh_token_expire_days * 24 * 60 * 60
     )
-    
+
     return Token(
         access_token=access_token,
         refresh_token=new_refresh_token,
@@ -161,15 +163,15 @@ async def logout(
 ):
     """Logout current user."""
     session_service = SessionService(db)
-    
+
     # Revoke current session
     if authorization and authorization.startswith("Bearer "):
         token = authorization.split(" ")[1]
         session_service.revoke_session(token)
-    
+
     # Clear refresh token cookie
     response.delete_cookie("refresh_token")
-    
+
     return {"message": "Successfully logged out"}
 
 
@@ -181,7 +183,7 @@ async def logout_all(
     """Logout from all sessions."""
     session_service = SessionService(db)
     count = session_service.revoke_all_sessions(current_user.id)
-    
+
     return {"message": f"Revoked {count} sessions"}
 
 
@@ -202,13 +204,13 @@ async def update_current_user(
     """Update current user profile."""
     user_service = UserService(db)
     updated_user = user_service.update_user(current_user.id, user_update)
-    
+
     if not updated_user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return UserResponse.from_orm(updated_user)
 
 
@@ -225,18 +227,18 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password"
         )
-    
+
     # Update password
     user_service = UserService(db)
     user_service.update_user(
         current_user.id,
         UserUpdate(password=password_data.new_password)
     )
-    
+
     # Revoke all sessions except current
     session_service = SessionService(db)
     # This is a simplified approach - in production, preserve current session
-    
+
     return {"message": "Password changed successfully"}
 
 
@@ -247,7 +249,7 @@ async def verify_email(
 ):
     """Verify email address with token."""
     user_service = UserService(db)
-    
+
     if user_service.verify_email(token):
         return {"message": "Email verified successfully"}
     else:
@@ -265,12 +267,12 @@ async def resend_verification(
     """Resend email verification."""
     if current_user.is_verified:
         return {"message": "Email already verified"}
-    
+
     verification_token = create_email_verification_token(
-        current_user.email, 
+        current_user.email,
         current_user.id
     )
-    
+
     # In production, send this via email
     return {
         "message": "Verification email sent",
@@ -285,7 +287,7 @@ async def forgot_password(
 ):
     """Request password reset."""
     user_service = UserService(db)
-    
+
     try:
         reset_token = user_service.request_password_reset(password_reset.email)
         # In production, send this via email
@@ -293,7 +295,7 @@ async def forgot_password(
             "message": "If the email exists, a reset link has been sent.",
             "token": reset_token  # REMOVE IN PRODUCTION
         }
-    except HTTPException as e:
+    except HTTPException:
         # Always return success to prevent email enumeration
         return {"message": "If the email exists, a reset link has been sent."}
 
@@ -305,7 +307,7 @@ async def reset_password(
 ):
     """Reset password with token."""
     user_service = UserService(db)
-    
+
     if user_service.reset_password(password_reset.token, password_reset.new_password):
         return {"message": "Password reset successfully"}
     else:
@@ -324,7 +326,7 @@ async def create_api_key(
 ):
     """Create a new API key."""
     api_key_service = APIKeyService(db)
-    
+
     api_key = api_key_service.create_api_key(
         user=current_user,
         name=api_key_data.name,
@@ -333,7 +335,7 @@ async def create_api_key(
         rate_limit=api_key_data.rate_limit,
         allowed_ips=api_key_data.allowed_ips
     )
-    
+
     return APIKeyResponse(
         id=api_key.id,
         key=api_key.key,  # Only shown once
@@ -351,7 +353,7 @@ async def list_api_keys(
     """List user's API keys."""
     api_key_service = APIKeyService(db)
     api_keys = api_key_service.get_user_api_keys(current_user.id)
-    
+
     # Don't include the actual key in list response
     return [
         APIKeyResponse(
@@ -374,7 +376,7 @@ async def delete_api_key(
 ):
     """Delete an API key."""
     api_key_service = APIKeyService(db)
-    
+
     if api_key_service.delete_api_key(key_id, current_user.id):
         return {"message": "API key deleted"}
     else:
@@ -394,7 +396,7 @@ async def list_users(
 ):
     """List all users (admin only)."""
     from .models import User
-    
+
     users = db.query(User).offset(skip).limit(limit).all()
     return [UserResponse.from_orm(user) for user in users]
 
@@ -408,13 +410,13 @@ async def get_user(
     """Get user by ID (admin only)."""
     user_service = UserService(db)
     user = user_service.get_user_by_id(user_id)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    
+
     return UserResponse.from_orm(user)
 
 
@@ -426,7 +428,7 @@ async def delete_user(
 ):
     """Delete user (admin only)."""
     user_service = UserService(db)
-    
+
     if user_service.delete_user(user_id):
         return {"message": "User deleted"}
     else:

@@ -1,13 +1,13 @@
 """Database configuration and session management."""
 import os
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import NullPool
-from typing import Generator
+from sqlalchemy.orm import Session, sessionmaker
 
 # Database URL from environment or default to SQLite
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
+    "DATABASE_URL",
     "sqlite:///./openlongcontext.db"
 )
 
@@ -53,9 +53,8 @@ def init_db():
 
 def create_initial_data():
     """Create initial data like default roles and superuser."""
-    from openlongcontext.api.auth.models import User, Role, UserRole
-    from openlongcontext.api.auth.services import create_user
-    
+    from openlongcontext.api.auth.models import Role, User
+
     db = SessionLocal()
     try:
         # Create default roles if they don't exist
@@ -81,24 +80,24 @@ def create_initial_data():
                 "permissions": ["read"]
             }
         ]
-        
+
         for role_data in default_roles:
             role = db.query(Role).filter(Role.name == role_data["name"]).first()
             if not role:
                 role = Role(**role_data)
                 db.add(role)
-        
+
         db.commit()
-        
+
         # Create superuser if it doesn't exist
         superuser_email = os.getenv("SUPERUSER_EMAIL", "admin@openlongcontext.ai")
         superuser_password = os.getenv("SUPERUSER_PASSWORD", "changeme123!")
-        
+
         existing_superuser = db.query(User).filter(User.email == superuser_email).first()
         if not existing_superuser:
             from openlongcontext.api.auth.services import UserService
             user_service = UserService(db)
-            
+
             superuser = user_service.create_user(
                 email=superuser_email,
                 username="admin",
@@ -107,15 +106,15 @@ def create_initial_data():
                 is_superuser=True,
                 is_verified=True
             )
-            
+
             # Add admin role to superuser
             admin_role = db.query(Role).filter(Role.name == "admin").first()
             if admin_role:
                 superuser.roles.append(admin_role)
                 db.commit()
-            
+
             print(f"Created superuser: {superuser_email}")
             print("Please change the default password immediately!")
-        
+
     finally:
         db.close()

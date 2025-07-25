@@ -10,14 +10,14 @@ OpenLongContext is a state-of-the-art framework designed to handle extremely lon
 
 ## Key Features
 
-### 🚀 Efficient Attention Mechanisms
+### Efficient Attention Mechanisms
 - **FlashAttention**: GPU-optimized attention with automatic fallback to CPU/MLX
 - **Sparse Attention**: Configurable sparsity patterns for reduced complexity
 - **Linear Attention**: O(n) complexity attention mechanisms
 - **Sliding Window**: Local attention with configurable window sizes
 - **Multi-Scale Attention**: Hierarchical attention across different scales
 
-### 🧠 Advanced Model Architectures
+### Advanced Model Architectures
 - **Longformer**: Sparse attention for long documents
 - **BigBird**: Random + local + global attention patterns
 - **Hyena**: Subquadratic attention alternative
@@ -26,28 +26,28 @@ OpenLongContext is a state-of-the-art framework designed to handle extremely lon
 - **RWKV**: Efficient recurrent architecture
 - **Rotary Position Embeddings**: Advanced positional encoding
 
-### 📊 Comprehensive Evaluation Suite
+### Comprehensive Evaluation Suite
 - **Perplexity Analysis**: Token-level and position-wise metrics
 - **Retrieval Metrics**: Long-context information retrieval
 - **Copy Task Evaluation**: Memory and attention analysis
 - **Reasoning Metrics**: Complex reasoning over long contexts
 - **Error Analysis**: Detailed failure mode investigation
 
-### 🔬 Experiment Management
+### Experiment Management
 - **MLflow Integration**: Comprehensive experiment tracking
 - **Weights & Biases**: Advanced visualization and monitoring
 - **TensorBoard**: Real-time training metrics
 - **Reproducibility Tools**: Deterministic experiment execution
 - **Ablation Studies**: Systematic component analysis
 
-### 🌐 Production API
+### Production API
 - **FastAPI Backend**: High-performance REST API
 - **Authentication**: JWT and API key support
 - **Rate Limiting**: Production-ready request throttling
 - **Multi-Backend Support**: CUDA, CPU, and MLX acceleration
 - **Docker Deployment**: Containerized deployment ready
 
-### 📚 Rich Dataset Support
+### Rich Dataset Support
 - **Real Datasets**: PG19, Books3, ArXiv Math, GitHub Issues, Code Continuation
 - **Synthetic Tasks**: Copy, Recall, Retrieval, and Reasoning benchmarks
 - **Custom Loaders**: Flexible data pipeline integration

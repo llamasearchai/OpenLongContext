@@ -1,16 +1,21 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from typing import List, Dict, Optional, Any
-import uuid
 import asyncio
-from .model_inference import answer_question
-from ..agents import AgentManager, OpenAIAgent, LongContextAgent
+import uuid
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from ..agents import AgentManager, OpenAIAgent
 from .auth import (
-    CurrentActiveUser, CurrentVerifiedUser, OptionalUser,
-    require_read, require_write, require_api_user
+    CurrentActiveUser,
+    CurrentVerifiedUser,
+    OptionalUser,
+    require_api_user,
+    require_read,
+    require_write,
 )
-from .middleware import auth_limit, api_limit
+from .middleware import api_limit
+from .model_inference import answer_question
 
 router = APIRouter(prefix="/api/v1", tags=["api"])
 
@@ -89,7 +94,7 @@ async def query_document(
     doc = doc_store.get(request.doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found.")
-    
+
     content = doc["content"].decode(errors="ignore") if isinstance(doc["content"], bytes) else str(doc["content"])
     answer, context = answer_question(content, request.question)
     return QueryResponse(answer=answer, context=context, doc_id=request.doc_id)
@@ -132,36 +137,36 @@ async def create_agent(
         if request.agent_type == "openai":
             if not request.openai_api_key:
                 raise HTTPException(status_code=400, detail="OpenAI API key required for OpenAI agent")
-            
+
             agent_id = agent_manager.create_openai_agent(
                 api_key=request.openai_api_key,
                 name=request.name or "OpenAI Agent",
                 config=request.config or {}
             )
-            
+
         elif request.agent_type == "long_context":
             if not request.openai_api_key:
                 raise HTTPException(status_code=400, detail="OpenAI API key required for long context agent")
-            
+
             # Create OpenAI client first
             openai_client = OpenAIAgent(api_key=request.openai_api_key)
-            
+
             # For demo purposes, use a mock model - in production, load actual model
             from ..models.longformer import LongformerForQuestionAnswering
             model = LongformerForQuestionAnswering()
-            
+
             agent_id = agent_manager.create_long_context_agent(
                 model=model,
                 openai_client=openai_client,
                 name=request.name or "Long Context Agent",
                 config=request.config or {}
             )
-            
+
         else:
             raise HTTPException(status_code=400, detail=f"Unknown agent type: {request.agent_type}")
-        
+
         return {"success": True, "agent_id": agent_id}
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -249,7 +254,7 @@ async def list_models(
         },
         {
             "name": "bigbird-roberta-base",
-            "type": "question_answering", 
+            "type": "question_answering",
             "max_context_length": 4096,
             "description": "BigBird model with sparse attention",
             "memory_requirements": "2.5GB",
@@ -280,7 +285,7 @@ async def list_models(
             "supported_tasks": ["text_generation", "long_context_modeling"]
         }
     ]
-    
+
     # Add loaded models info
     loaded_models = []
     if hasattr(router, "_loaded_models"):
@@ -292,7 +297,7 @@ async def list_models(
                 "loaded_at": model_data.get("loaded_at"),
                 "status": "loaded"
             })
-    
+
     return {
         "available_models": available_models,
         "loaded_models": loaded_models
@@ -303,21 +308,20 @@ async def get_model_info(model_id: str):
     """Get information about a loaded model."""
     if not hasattr(router, "_loaded_models") or model_id not in router._loaded_models:
         raise HTTPException(status_code=404, detail="Model not found")
-    
+
     model_data = router._loaded_models[model_id]
     model = model_data["model"]
-    
+
     # Get model stats
     param_count = 0
     if hasattr(model, "num_parameters"):
         param_count = model.num_parameters()
     elif hasattr(model, "parameters"):
         try:
-            import torch
             param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         except:
             pass
-    
+
     return {
         "model_id": model_id,
         "model_name": model_data["model_name"],
@@ -340,14 +344,14 @@ async def unload_model(model_id: str):
     """Unload a model from memory."""
     if not hasattr(router, "_loaded_models") or model_id not in router._loaded_models:
         raise HTTPException(status_code=404, detail="Model not found")
-    
+
     model_name = router._loaded_models[model_id]["model_name"]
     del router._loaded_models[model_id]
-    
+
     # Trigger garbage collection to free memory
     import gc
     gc.collect()
-    
+
     return {
         "success": True,
         "message": f"Model {model_name} (ID: {model_id}) unloaded successfully"
@@ -388,33 +392,33 @@ async def load_model(
                 "type": "language_model"
             }
         }
-        
+
         if request.model_name not in model_registry:
             raise HTTPException(status_code=404, detail=f"Model '{request.model_name}' not found in registry")
-        
+
         model_spec = model_registry[request.model_name]
-        
+
         # Verify model type matches
         if request.model_type != model_spec["type"]:
             raise HTTPException(
-                status_code=400, 
+                status_code=400,
                 detail=f"Model type mismatch. Expected {model_spec['type']}, got {request.model_type}"
             )
-        
+
         # Dynamic model loading
         try:
             import importlib
             module = importlib.import_module(model_spec["module"], package="openlongcontext.api")
             model_class = getattr(module, model_spec["class"])
-            
+
             # Initialize model with config
             config = request.config or {}
             model_instance = model_class(**config)
-            
+
             # Store model instance (in production, use proper model registry)
             if not hasattr(router, "_loaded_models"):
                 router._loaded_models = {}
-            
+
             model_id = f"{request.model_name}_{uuid.uuid4().hex[:8]}"
             router._loaded_models[model_id] = {
                 "model": model_instance,
@@ -423,7 +427,7 @@ async def load_model(
                 "config": config,
                 "loaded_at": asyncio.get_event_loop().time()
             }
-            
+
             model_info = {
                 "model_id": model_id,
                 "model_name": request.model_name,
@@ -436,16 +440,16 @@ async def load_model(
                     "supports_batching": getattr(model_instance, "supports_batching", True)
                 }
             }
-            
+
             return {"success": True, "model_info": model_info}
-            
+
         except ImportError as e:
             raise HTTPException(status_code=500, detail=f"Failed to import model module: {str(e)}")
         except AttributeError as e:
             raise HTTPException(status_code=500, detail=f"Failed to find model class: {str(e)}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to initialize model: {str(e)}")
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -462,11 +466,11 @@ async def model_inference(
         model_id = request.get("model_id")
         model_name = request.get("model_name")
         inference_params = request.get("params", {})
-        
+
         # Get loaded model
         if not hasattr(router, "_loaded_models"):
             raise HTTPException(status_code=400, detail="No models loaded")
-        
+
         # Find model by ID or name
         model_data = None
         if model_id and model_id in router._loaded_models:
@@ -478,33 +482,33 @@ async def model_inference(
                     model_data = mdata
                     model_id = mid
                     break
-        
+
         if not model_data:
             raise HTTPException(status_code=404, detail="Model not found. Please load a model first.")
-        
+
         model = model_data["model"]
         model_type = model_data["model_type"]
-        
+
         # Perform inference based on model type
         import time
         start_time = time.time()
-        
+
         if model_type == "question_answering":
             # For QA models, expect question in params
             question = inference_params.get("question", "What is this about?")
-            
+
             # Call model's predict method
             if hasattr(model, "answer_question"):
                 answer = model.answer_question(context=input_text, question=question)
                 output = {"answer": answer, "question": question}
             else:
                 output = {"error": "Model does not support question answering"}
-                
+
         elif model_type == "language_model":
             # For language models, generate text
             max_length = inference_params.get("max_length", 100)
             temperature = inference_params.get("temperature", 1.0)
-            
+
             if hasattr(model, "generate"):
                 generated = model.generate(
                     input_text,
@@ -519,9 +523,9 @@ async def model_inference(
                 output = {"error": "Model does not support text generation"}
         else:
             output = {"error": f"Unknown model type: {model_type}"}
-        
+
         processing_time = time.time() - start_time
-        
+
         result = {
             "success": True,
             "model_id": model_id,
@@ -532,9 +536,9 @@ async def model_inference(
             "processing_time": round(processing_time, 3),
             "inference_params": inference_params
         }
-        
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -547,7 +551,7 @@ experiments_store: Dict[str, Dict] = {}
 async def run_experiment(request: ExperimentRunRequest, background_tasks: BackgroundTasks):
     """Start an experiment."""
     exp_id = str(uuid.uuid4())
-    
+
     experiment_data = {
         "experiment_id": exp_id,
         "experiment_type": request.experiment_type,
@@ -557,12 +561,12 @@ async def run_experiment(request: ExperimentRunRequest, background_tasks: Backgr
         "start_time": asyncio.get_event_loop().time(),
         "results": None
     }
-    
+
     experiments_store[exp_id] = experiment_data
-    
+
     # Start experiment in background
     background_tasks.add_task(run_experiment_background, exp_id, request)
-    
+
     return {
         "success": True,
         "experiment_id": exp_id,
@@ -575,7 +579,7 @@ async def run_experiment_background(exp_id: str, request: ExperimentRunRequest):
     try:
         # Simulate experiment execution
         await asyncio.sleep(5)  # Mock processing time
-        
+
         # Mock results
         results = {
             "experiment_type": request.experiment_type,
@@ -586,13 +590,13 @@ async def run_experiment_background(exp_id: str, request: ExperimentRunRequest):
             },
             "config_used": request.config
         }
-        
+
         experiments_store[exp_id].update({
             "status": "completed",
             "end_time": asyncio.get_event_loop().time(),
             "results": results
         })
-        
+
     except Exception as e:
         experiments_store[exp_id].update({
             "status": "failed",
@@ -606,7 +610,7 @@ async def get_experiment_status(exp_id: str):
     experiment = experiments_store.get(exp_id)
     if not experiment:
         raise HTTPException(status_code=404, detail="Experiment not found")
-    
+
     return {
         "experiment_id": exp_id,
         "status": experiment["status"],
@@ -621,10 +625,10 @@ async def get_experiment_results(exp_id: str):
     experiment = experiments_store.get(exp_id)
     if not experiment:
         raise HTTPException(status_code=404, detail="Experiment not found")
-    
+
     if experiment["status"] != "completed":
         raise HTTPException(status_code=400, detail=f"Experiment status: {experiment['status']}")
-    
+
     return {
         "experiment_id": exp_id,
         "results": experiment["results"],
@@ -659,4 +663,4 @@ async def health_check():
             "agent_manager": "active",
             "model_inference": "active"
         }
-    } 
+    }

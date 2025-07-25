@@ -1,6 +1,7 @@
 from typing import Tuple
-from transformers import pipeline, AutoTokenizer, AutoModelForQuestionAnswering
+
 import torch
+from transformers import AutoModelForQuestionAnswering, AutoTokenizer, pipeline
 
 # Load a real long-context model (Longformer QA)
 MODEL_NAME = "allenai/longformer-base-4096"
@@ -17,4 +18,4 @@ def answer_question(document: str, question: str) -> Tuple[str, str]:
     result = qa_pipeline({"context": document, "question": question})
     answer = result["answer"]
     context_span = document[result["start"]:result["end"]]
-    return answer, context_span 
+    return answer, context_span

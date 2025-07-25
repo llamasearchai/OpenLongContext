@@ -7,9 +7,9 @@ with automatic detection and graceful fallbacks.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-from typing import Dict, Union
-from enum import Enum
 import logging
+from enum import Enum
+from typing import Dict, Union
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +26,11 @@ class BackendManager:
     Manages backend selection and provides unified interface across
     CUDA, CPU, and MLX (Apple Silicon) backends.
     """
-    
+
     def __init__(self):
         self._available_backends = self._detect_backends()
         self._current_backend = self._select_default_backend()
-        
+
     def _detect_backends(self) -> Dict[BackendType, bool]:
         """Detect available backends on the current system."""
         backends = {
@@ -38,7 +38,7 @@ class BackendManager:
             BackendType.CUDA: False,
             BackendType.MLX: False
         }
-        
+
         # Check CUDA availability
         try:
             import torch
@@ -47,7 +47,7 @@ class BackendManager:
                 logger.info(f"CUDA detected: {torch.cuda.device_count()} devices")
         except ImportError:
             logger.debug("PyTorch not available, CUDA backend disabled")
-        
+
         # Check MLX availability (Apple Silicon)
         try:
             import mlx.core  # noqa: F401
@@ -55,9 +55,9 @@ class BackendManager:
             logger.info("MLX backend available (Apple Silicon)")
         except ImportError:
             logger.debug("MLX not available, backend disabled")
-            
+
         return backends
-    
+
     def _select_default_backend(self) -> BackendType:
         """Select the best available backend by priority."""
         if self._available_backends[BackendType.CUDA]:
@@ -66,17 +66,17 @@ class BackendManager:
             return BackendType.MLX
         else:
             return BackendType.CPU
-    
+
     @property
     def current_backend(self) -> BackendType:
         """Get the currently selected backend."""
         return self._current_backend
-    
+
     @property
     def available_backends(self) -> Dict[BackendType, bool]:
         """Get dictionary of available backends."""
         return self._available_backends.copy()
-    
+
     def set_backend(self, backend: Union[str, BackendType]) -> bool:
         """
         Set the active backend.
@@ -93,15 +93,15 @@ class BackendManager:
             except ValueError:
                 logger.error(f"Invalid backend: {backend}")
                 return False
-        
+
         if not self._available_backends[backend]:
             logger.warning(f"Backend {backend.value} not available, keeping {self._current_backend.value}")
             return False
-        
+
         self._current_backend = backend
         logger.info(f"Backend set to: {backend.value}")
         return True
-    
+
     def get_device_string(self) -> str:
         """Get device string for the current backend."""
         if self._current_backend == BackendType.CUDA:
@@ -110,7 +110,7 @@ class BackendManager:
             return "mlx"
         else:
             return "cpu"
-    
+
     def get_tensor_library(self):
         """Get the appropriate tensor library for current backend."""
         if self._current_backend == BackendType.CUDA or self._current_backend == BackendType.CPU:
@@ -127,11 +127,11 @@ class BackendManager:
         else:
             import torch
             return torch
-    
+
     def create_tensor(self, data, dtype=None, device=None):
         """Create tensor using appropriate backend."""
         tensor_lib = self.get_tensor_library()
-        
+
         if self._current_backend == BackendType.MLX:
             # MLX tensor creation
             import mlx.core as mx
@@ -147,15 +147,15 @@ class BackendManager:
                 return torch.tensor(data, device=device)
             else:
                 return torch.tensor(data, dtype=dtype, device=device)
-    
+
     def is_cuda_available(self) -> bool:
         """Check if CUDA backend is available."""
         return self._available_backends[BackendType.CUDA]
-    
+
     def is_mlx_available(self) -> bool:
         """Check if MLX backend is available."""
         return self._available_backends[BackendType.MLX]
-    
+
     def get_flash_attention(self):
         """Get flash attention implementation if available."""
         if self._current_backend == BackendType.CUDA and self.is_cuda_available():
@@ -194,4 +194,4 @@ def get_device() -> str:
 
 def create_tensor(data, dtype=None, device=None):
     """Create tensor using current backend."""
-    return backend_manager.create_tensor(data, dtype, device) 
+    return backend_manager.create_tensor(data, dtype, device)

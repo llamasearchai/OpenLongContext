@@ -9,7 +9,7 @@ This package provides:
 - Extensive evaluation metrics and benchmarking tools
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Nik Jois"
 __email__ = "nikjois@llamasearch.ai"
 __license__ = "Apache-2.0"
@@ -17,12 +17,12 @@ __license__ = "Apache-2.0"
 # Core imports for convenience
 try:
     from .core.config import Config
-    from .core.experiment import Experiment
     from .core.engine import Engine
+    from .core.experiment import Experiment
     from .core.tracking import ExperimentTracker
 except ImportError as e:
     import warnings
-    warnings.warn(f"Could not import core modules: {e}")
+    warnings.warn(f"Could not import core modules: {e}", stacklevel=2)
     Config = None
     Experiment = None
     Engine = None
@@ -30,16 +30,10 @@ except ImportError as e:
 
 # Model imports
 try:
-    from .models import (
-        longformer,
-        bigbird,
-        hyena,
-        transformer_xl,
-        memorizing_transformer
-    )
+    from .models import bigbird, hyena, longformer, memorizing_transformer, transformer_xl
 except ImportError as e:
     import warnings
-    warnings.warn(f"Could not import model modules: {e}")
+    warnings.warn(f"Could not import model modules: {e}", stacklevel=2)
     longformer = None
     bigbird = None
     hyena = None
@@ -49,11 +43,11 @@ except ImportError as e:
 # Ablation tools
 try:
     from .ablation.bayesian_optimization import BayesianOptimizer
-    from .ablation.hyperparameter_sweep import HyperparameterSweep
     from .ablation.experiment_registry import experiment_registry, register_experiment
+    from .ablation.hyperparameter_sweep import HyperparameterSweep
 except ImportError as e:
     import warnings
-    warnings.warn(f"Could not import ablation modules: {e}")
+    warnings.warn(f"Could not import ablation modules: {e}", stacklevel=2)
     BayesianOptimizer = None
     HyperparameterSweep = None
     experiment_registry = None
@@ -61,15 +55,10 @@ except ImportError as e:
 
 # Evaluation tools
 try:
-    from .evaluation import (
-        perplexity,
-        retrieval_metrics,
-        reasoning_metrics,
-        copy_metrics
-    )
+    from .evaluation import copy_metrics, perplexity, reasoning_metrics, retrieval_metrics
 except ImportError as e:
     import warnings
-    warnings.warn(f"Could not import evaluation modules: {e}")
+    warnings.warn(f"Could not import evaluation modules: {e}", stacklevel=2)
     perplexity = None
     retrieval_metrics = None
     reasoning_metrics = None
@@ -80,7 +69,7 @@ try:
     from .api.routes import router as api_router
 except ImportError as e:
     import warnings
-    warnings.warn(f"Could not import API modules: {e}")
+    warnings.warn(f"Could not import API modules: {e}", stacklevel=2)
     api_router = None
 
 __all__ = [
@@ -89,32 +78,32 @@ __all__ = [
     "__author__",
     "__email__",
     "__license__",
-    
+
     # Core components
     "Config",
-    "Experiment", 
+    "Experiment",
     "Engine",
     "ExperimentTracker",
-    
+
     # Models
     "longformer",
     "bigbird",
     "hyena",
     "transformer_xl",
     "memorizing_transformer",
-    
+
     # Ablation tools
     "BayesianOptimizer",
     "HyperparameterSweep",
     "experiment_registry",
     "register_experiment",
-    
+
     # Evaluation
     "perplexity",
     "retrieval_metrics",
     "reasoning_metrics",
     "copy_metrics",
-    
+
     # API
     "api_router"
 ]

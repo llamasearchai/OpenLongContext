@@ -2,10 +2,10 @@
 Type definitions for OpenLongContext.
 """
 
-from typing import Dict, Any, List, Optional, Union, Tuple, TypedDict, Protocol
 from dataclasses import dataclass
 from enum import Enum
-import torch
+from typing import Any, Dict, List, Optional, Protocol, Tuple, TypedDict
+
 from torch import Tensor
 
 
@@ -66,19 +66,19 @@ class ModelOutput:
 
 class TokenizerProtocol(Protocol):
     """Protocol for tokenizer interface."""
-    
+
     def tokenize(self, text: str) -> List[str]:
         """Tokenize text into tokens."""
         ...
-    
+
     def encode(self, text: str, **kwargs) -> List[int]:
         """Encode text into token IDs."""
         ...
-    
+
     def decode(self, token_ids: List[int], **kwargs) -> str:
         """Decode token IDs into text."""
         ...
-    
+
     @property
     def vocab_size(self) -> int:
         """Get vocabulary size."""
@@ -87,19 +87,19 @@ class TokenizerProtocol(Protocol):
 
 class ModelProtocol(Protocol):
     """Protocol for model interface."""
-    
+
     def forward(self, batch: BatchData) -> ModelOutput:
         """Forward pass through model."""
         ...
-    
+
     def generate(self, input_ids: Tensor, **kwargs) -> Tensor:
         """Generate text from input."""
         ...
-    
+
     def save_pretrained(self, path: str) -> None:
         """Save model to disk."""
         ...
-    
+
     @classmethod
     def from_pretrained(cls, path: str) -> "ModelProtocol":
         """Load model from disk."""
@@ -127,13 +127,7 @@ class ExperimentMetrics(TypedDict):
 
 
 # Re-export dataclasses from config for convenience
-from .config import (
-    ModelConfig,
-    DataConfig,
-    TrainingConfig,
-    EvaluationConfig,
-    ExperimentConfig
-)
+from .config import DataConfig, EvaluationConfig, ExperimentConfig, ModelConfig, TrainingConfig
 
 __all__ = [
     "ModelType",

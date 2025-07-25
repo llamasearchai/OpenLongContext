@@ -3,8 +3,9 @@ Random Search for Ablation Studies
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-from typing import Dict, Callable, Any, List
 import random
+from typing import Any, Callable, Dict, List
+
 
 class RandomSearch:
     def __init__(self, objective_fn: Callable[[Dict[str, Any]], float], param_space: Dict[str, List[Any]], n_trials: int = 50):

@@ -6,7 +6,7 @@
 
 A comprehensive research platform and production-ready service for long-context scaling in transformers, featuring state-of-the-art models, advanced ablation tools, and seamless OpenAI integration.
 
-## 🚀 Features
+## Features
 
 ### Production-Ready API Service
 - **FastAPI-based REST API** for document processing and question answering
@@ -30,7 +30,7 @@ A comprehensive research platform and production-ready service for long-context 
 - **Memorizing Transformer**: kNN-augmented attention
 - **Flash Attention**: Hardware-efficient implementation
 
-## 📦 Installation
+## Installation
 
 ### Basic Installation
 ```bash
@@ -49,7 +49,7 @@ pip install -e ".[dev,research]"
 pip install "openlongcontext[all]"
 ```
 
-## 🎯 Quick Start
+## Quick Start
 
 ### 1. API Service
 
@@ -203,7 +203,7 @@ openlongcontext-analyze results/experiment_001/
 openlongcontext-ablate --config ablations/attention_patterns.yaml
 ```
 
-## 📊 Evaluation Metrics
+## Evaluation Metrics
 
 Built-in metrics for long-context evaluation:
 
@@ -212,7 +212,7 @@ Built-in metrics for long-context evaluation:
 - **Copy Task Metrics**: Accuracy for synthetic memory tasks
 - **Reasoning Metrics**: Chain-of-thought evaluation
 
-## 🔧 Configuration
+## Configuration
 
 Example configuration for experiments:
 
@@ -235,7 +235,7 @@ data:
   preprocessing: "chunk_and_stride"
 ```
 
-## 📈 Performance
+## Performance
 
 Benchmark results on long-context tasks:
 
@@ -246,7 +246,7 @@ Benchmark results on long-context tasks:
 | Hyena | 8,192 | 19.1 | 0.71 | 412 tok/s |
 | Transformer-XL | 16,384 | 16.8 | 0.77 | 156 tok/s |
 
-## 🧪 Testing
+## Testing
 
 Run the comprehensive test suite:
 
@@ -264,7 +264,7 @@ pytest tests/performance/
 pytest --cov=openlongcontext --cov-report=html
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 

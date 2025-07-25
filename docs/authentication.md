@@ -297,14 +297,14 @@ pytest tests/unit/test_auth.py -v
 
 Before deploying to production:
 
-1. ✅ Change the `SECRET_KEY` to a strong random value
-2. ✅ Use a production database (PostgreSQL/MySQL)
-3. ✅ Enable HTTPS with valid SSL certificates
-4. ✅ Configure email service for verification/reset emails
-5. ✅ Set appropriate rate limits
-6. ✅ Enable monitoring and logging
-7. ✅ Regular security audits and updates
-8. ✅ Implement backup and recovery procedures
+1. Change the `SECRET_KEY` to a strong random value
+2. Use a production database (PostgreSQL/MySQL)
+3. Enable HTTPS with valid SSL certificates
+4. Configure email service for verification/reset emails
+5. Set appropriate rate limits
+6. Enable monitoring and logging
+7. Regular security audits and updates
+8. Implement backup and recovery procedures
 
 ## Integration Examples
 

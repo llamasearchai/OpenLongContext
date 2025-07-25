@@ -6,20 +6,21 @@ Comprehensive W&B integration for experiment tracking and visualization.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-import wandb
-from typing import Dict, Any, Optional, Union, List
 import logging
-import torch
-import numpy as np
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import wandb
 
 logger = logging.getLogger(__name__)
 
 
 class WandBTracker:
     """Weights & Biases experiment tracking integration."""
-    
+
     def __init__(
         self,
         project: str = "openlongcontext",
@@ -45,7 +46,7 @@ class WandBTracker:
         self.project = project
         self.entity = entity
         self.run = None
-        
+
         try:
             self.run = wandb.init(
                 project=project,
@@ -57,13 +58,13 @@ class WandBTracker:
                 mode=mode,
                 reinit=True
             )
-            
+
             logger.info(f"Initialized W&B run: {self.run.name} (ID: {self.run.id})")
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize W&B: {e}")
             raise
-    
+
     def log_metrics(
         self,
         metrics: Dict[str, Union[float, int, np.number]],
@@ -79,13 +80,13 @@ class WandBTracker:
                     numeric_metrics[key] = float(value)
                 else:
                     logger.warning(f"Skipping non-numeric metric: {key} = {value}")
-            
+
             wandb.log(numeric_metrics, step=step, commit=commit)
             logger.debug(f"Logged {len(numeric_metrics)} metrics to W&B")
-            
+
         except Exception as e:
             logger.error(f"Failed to log metrics: {e}")
-    
+
     def log_hyperparameters(self, params: Dict[str, Any]):
         """Log hyperparameters to W&B config."""
         try:
@@ -93,7 +94,7 @@ class WandBTracker:
             logger.debug(f"Updated W&B config with {len(params)} parameters")
         except Exception as e:
             logger.error(f"Failed to log hyperparameters: {e}")
-    
+
     def log_artifact(
         self,
         artifact_path: str,
@@ -110,18 +111,18 @@ class WandBTracker:
                 description=description,
                 metadata=metadata
             )
-            
+
             if Path(artifact_path).is_dir():
                 artifact.add_dir(artifact_path)
             else:
                 artifact.add_file(artifact_path)
-            
+
             wandb.log_artifact(artifact)
             logger.debug(f"Logged artifact: {artifact_path}")
-            
+
         except Exception as e:
             logger.error(f"Failed to log artifact: {e}")
-    
+
     def log_model(
         self,
         model: torch.nn.Module,
@@ -133,7 +134,7 @@ class WandBTracker:
             # Save model temporarily
             model_path = f"/tmp/{name}.pth"
             torch.save(model.state_dict(), model_path)
-            
+
             # Create artifact
             artifact = wandb.Artifact(
                 name=name,
@@ -141,16 +142,16 @@ class WandBTracker:
                 metadata=metadata or {}
             )
             artifact.add_file(model_path)
-            
+
             wandb.log_artifact(artifact)
             logger.info(f"Logged model to W&B: {name}")
-            
+
             # Clean up
             Path(model_path).unlink(missing_ok=True)
-            
+
         except Exception as e:
             logger.error(f"Failed to log model: {e}")
-    
+
     def log_image(
         self,
         image: Union[str, np.ndarray, plt.Figure],
@@ -164,7 +165,7 @@ class WandBTracker:
             logger.debug(f"Logged image: {key}")
         except Exception as e:
             logger.error(f"Failed to log image: {e}")
-    
+
     def log_table(
         self,
         data: List[List[Any]],
@@ -179,7 +180,7 @@ class WandBTracker:
             logger.debug(f"Logged table: {key}")
         except Exception as e:
             logger.error(f"Failed to log table: {e}")
-    
+
     def log_histogram(
         self,
         values: Union[np.ndarray, List[float]],
@@ -193,7 +194,7 @@ class WandBTracker:
             logger.debug(f"Logged histogram: {key}")
         except Exception as e:
             logger.error(f"Failed to log histogram: {e}")
-    
+
     def log_text(
         self,
         text: str,
@@ -206,7 +207,7 @@ class WandBTracker:
             logger.debug(f"Logged text: {key}")
         except Exception as e:
             logger.error(f"Failed to log text: {e}")
-    
+
     def log_audio(
         self,
         audio_path: str,
@@ -223,7 +224,7 @@ class WandBTracker:
             logger.debug(f"Logged audio: {key}")
         except Exception as e:
             logger.error(f"Failed to log audio: {e}")
-    
+
     def log_code(self, code_dir: str = "."):
         """Log code files to W&B."""
         try:
@@ -231,7 +232,7 @@ class WandBTracker:
             logger.debug(f"Logged code from: {code_dir}")
         except Exception as e:
             logger.error(f"Failed to log code: {e}")
-    
+
     def watch_model(
         self,
         model: torch.nn.Module,
@@ -246,7 +247,7 @@ class WandBTracker:
             logger.info("Started watching model for gradient tracking")
         except Exception as e:
             logger.error(f"Failed to watch model: {e}")
-    
+
     def unwatch_model(self, model: torch.nn.Module):
         """Stop watching a model."""
         try:
@@ -254,7 +255,7 @@ class WandBTracker:
             logger.info("Stopped watching model")
         except Exception as e:
             logger.error(f"Failed to unwatch model: {e}")
-    
+
     def add_tags(self, tags: List[str]):
         """Add tags to the current run."""
         try:
@@ -262,7 +263,7 @@ class WandBTracker:
             logger.debug(f"Added tags: {tags}")
         except Exception as e:
             logger.error(f"Failed to add tags: {e}")
-    
+
     def set_summary(self, summary: Dict[str, Any]):
         """Set summary metrics for the run."""
         try:
@@ -271,7 +272,7 @@ class WandBTracker:
             logger.debug(f"Set summary with {len(summary)} metrics")
         except Exception as e:
             logger.error(f"Failed to set summary: {e}")
-    
+
     def finish(self):
         """Finish the W&B run."""
         try:
@@ -280,7 +281,7 @@ class WandBTracker:
                 logger.info(f"Finished W&B run: {self.run.name}")
         except Exception as e:
             logger.error(f"Failed to finish W&B run: {e}")
-    
+
     def get_run_url(self) -> Optional[str]:
         """Get the URL of the current run."""
         try:
@@ -293,7 +294,7 @@ class WandBTracker:
 
 class WandBContextManager:
     """Context manager for W&B runs."""
-    
+
     def __init__(
         self,
         project: str = "openlongcontext",
@@ -313,10 +314,10 @@ class WandBContextManager:
             notes=notes,
             mode=mode
         )
-    
+
     def __enter__(self):
         return self.tracker
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.tracker.finish()
 
@@ -380,29 +381,29 @@ def log_experiment_results(
     try:
         # Log hyperparameters
         tracker.log_hyperparameters(config)
-        
+
         # Log metrics
         tracker.log_metrics(metrics)
-        
+
         # Add tags
         if tags:
             tracker.add_tags(tags)
-        
+
         # Log model
         if model:
             tracker.log_model(model)
-        
+
         # Log artifacts
         if artifacts:
             for artifact_path, artifact_name in artifacts.items():
                 tracker.log_artifact(artifact_path, name=artifact_name)
-        
+
         # Set summary
         if summary:
             tracker.set_summary(summary)
-        
+
         logger.info("Successfully logged experiment results to W&B")
-        
+
     except Exception as e:
         logger.error(f"Failed to log experiment results: {e}")
         raise

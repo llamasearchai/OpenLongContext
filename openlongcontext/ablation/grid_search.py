@@ -3,8 +3,9 @@ Grid Search for Ablation Studies
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-from typing import Dict, Callable, Any, List
 import itertools
+from typing import Any, Callable, Dict, List
+
 
 class GridSearch:
     def __init__(self, objective_fn: Callable[[Dict[str, Any]], float], param_grid: Dict[str, List[Any]]):

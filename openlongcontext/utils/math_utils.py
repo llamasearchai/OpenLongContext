@@ -6,11 +6,11 @@ Comprehensive mathematical utilities for long context models.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-import torch
-import numpy as np
-import math
-from typing import Tuple, Optional
 import logging
+import math
+from typing import Optional, Tuple
+
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -79,13 +79,13 @@ def gumbel_softmax(
     """
     # Sample Gumbel noise
     gumbel_noise = -torch.log(-torch.log(torch.rand_like(logits) + 1e-10) + 1e-10)
-    
+
     # Add noise to logits and apply temperature
     y = (logits + gumbel_noise) / temperature
-    
+
     # Softmax
     y_soft = torch.softmax(y, dim=dim)
-    
+
     if hard:
         # Straight-through estimator
         y_hard = torch.zeros_like(y_soft)
@@ -93,7 +93,7 @@ def gumbel_softmax(
         y = y_hard - y_soft.detach() + y_soft
     else:
         y = y_soft
-    
+
     return y
 
 
@@ -117,15 +117,15 @@ def positional_encoding(
     """
     pe = torch.zeros(seq_len, d_model, device=device)
     position = torch.arange(0, seq_len, dtype=torch.float, device=device).unsqueeze(1)
-    
+
     div_term = torch.exp(
         torch.arange(0, d_model, 2, dtype=torch.float, device=device) *
         -(math.log(max_len) / d_model)
     )
-    
+
     pe[:, 0::2] = torch.sin(position * div_term)
     pe[:, 1::2] = torch.cos(position * div_term)
-    
+
     return pe
 
 
@@ -148,20 +148,20 @@ def rotary_positional_encoding(
         Tuple of (cos, sin) tensors for RoPE
     """
     assert dim % 2 == 0, "Dimension must be even for RoPE"
-    
+
     # Create frequency tensor
     inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float, device=device) / dim))
-    
+
     # Create position tensor
     t = torch.arange(seq_len, dtype=torch.float, device=device)
-    
+
     # Compute frequencies
     freqs = torch.outer(t, inv_freq)
-    
+
     # Create cos and sin
     cos = torch.cos(freqs)
     sin = torch.sin(freqs)
-    
+
     return cos, sin
 
 
@@ -183,11 +183,11 @@ def apply_rotary_pos_emb(
     """
     # Split x into pairs
     x1, x2 = x[..., ::2], x[..., 1::2]
-    
+
     # Apply rotation
     rotated_x1 = x1 * cos - x2 * sin
     rotated_x2 = x1 * sin + x2 * cos
-    
+
     # Interleave back
     return torch.stack([rotated_x1, rotated_x2], dim=-1).flatten(-2)
 
@@ -215,27 +215,27 @@ def scaled_dot_product_attention(
         Tuple of (attention_output, attention_weights)
     """
     _, _, _, dim = query.shape
-    
+
     if scale is None:
         scale = 1.0 / math.sqrt(dim)
-    
+
     # Compute attention scores
     scores = torch.matmul(query, key.transpose(-2, -1)) * scale
-    
+
     # Apply mask if provided
     if mask is not None:
         scores = scores.masked_fill(mask == 0, float('-inf'))
-    
+
     # Softmax
     attn_weights = torch.softmax(scores, dim=-1)
-    
+
     # Apply dropout
     if dropout_p > 0.0:
         attn_weights = torch.dropout(attn_weights, dropout_p, train=True)
-    
+
     # Apply attention to values
     output = torch.matmul(attn_weights, value)
-    
+
     return output, attn_weights
 
 
@@ -396,22 +396,22 @@ def top_k_top_p_filtering(
         top_k = min(top_k, logits.size(-1))
         indices_to_remove = logits < torch.topk(logits, top_k)[0][..., -1, None]
         logits[indices_to_remove] = filter_value
-    
+
     if top_p < 1.0:
         # Nucleus filtering
         sorted_logits, sorted_indices = torch.sort(logits, descending=True)
         cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
-        
+
         # Remove tokens with cumulative probability above the threshold
         sorted_indices_to_remove = cumulative_probs > top_p
         # Shift the indices to the right to keep also the first token above the threshold
         sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
         sorted_indices_to_remove[..., 0] = 0
-        
+
         # Scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices_to_remove.scatter(-1, sorted_indices, sorted_indices_to_remove)
         logits[indices_to_remove] = filter_value
-    
+
     return logits
 
 
@@ -428,17 +428,17 @@ def compute_gradient_norm(parameters, norm_type: float = 2.0) -> float:
     """
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
-    
+
     parameters = [p for p in parameters if p.grad is not None]
-    
+
     if len(parameters) == 0:
         return 0.0
-    
+
     total_norm = 0.0
     for p in parameters:
         param_norm = p.grad.data.norm(norm_type)
         total_norm += param_norm.item() ** norm_type
-    
+
     return total_norm ** (1.0 / norm_type)
 
 
@@ -456,25 +456,25 @@ def clip_gradients(parameters, max_norm: float, norm_type: float = 2.0) -> float
     """
     if isinstance(parameters, torch.Tensor):
         parameters = [parameters]
-    
+
     parameters = [p for p in parameters if p.grad is not None]
-    
+
     if len(parameters) == 0:
         return 0.0
-    
+
     max_norm = float(max_norm)
     norm_type = float(norm_type)
-    
+
     total_norm = 0.0
     for p in parameters:
         param_norm = p.grad.data.norm(norm_type)
         total_norm += param_norm.item() ** norm_type
-    
+
     total_norm = total_norm ** (1.0 / norm_type)
-    
+
     clip_coef = max_norm / (total_norm + 1e-6)
     if clip_coef < 1:
         for p in parameters:
             p.grad.data.mul_(clip_coef)
-    
+
     return total_norm

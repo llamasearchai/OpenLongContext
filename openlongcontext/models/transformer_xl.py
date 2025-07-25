@@ -4,15 +4,16 @@ Transformer-XL model implementation with recurrent memory.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
+from typing import Dict, List, Optional
+
 import torch
 import torch.nn as nn
-from transformers import TransfoXLModel, TransfoXLConfig
-from typing import Dict, Any, Optional, List
+from transformers import TransfoXLConfig, TransfoXLModel
 
 
 class TransformerXLForQuestionAnswering(nn.Module):
     """Transformer-XL model for question answering with recurrent memory."""
-    
+
     def __init__(
         self,
         vocab_size: int = 50257,
@@ -23,7 +24,7 @@ class TransformerXLForQuestionAnswering(nn.Module):
         **kwargs
     ):
         super().__init__()
-        
+
         config = TransfoXLConfig(
             vocab_size=vocab_size,
             d_model=d_model,
@@ -32,10 +33,10 @@ class TransformerXLForQuestionAnswering(nn.Module):
             mem_len=mem_len,
             **kwargs
         )
-        
+
         self.transformer = TransfoXLModel(config)
         self.qa_outputs = nn.Linear(config.d_model, 2)
-        
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -48,14 +49,14 @@ class TransformerXLForQuestionAnswering(nn.Module):
             mems=mems,
             **kwargs
         )
-        
+
         sequence_output = outputs.last_hidden_state
         logits = self.qa_outputs(sequence_output)
-        
+
         start_logits, end_logits = logits.split(1, dim=-1)
         start_logits = start_logits.squeeze(-1)
         end_logits = end_logits.squeeze(-1)
-        
+
         return {
             "start_logits": start_logits,
             "end_logits": end_logits,

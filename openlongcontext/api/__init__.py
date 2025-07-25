@@ -1,9 +1,11 @@
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
 from . import routes
 from .auth import auth_router
+from .database import create_initial_data, init_db
 from .middleware import setup_middleware
-from .database import init_db, create_initial_data
 
 
 @asynccontextmanager
@@ -14,9 +16,9 @@ async def lifespan(app: FastAPI):
     init_db()
     create_initial_data()
     print("OpenLongContext API started successfully!")
-    
+
     yield
-    
+
     # Shutdown
     print("Shutting down OpenLongContext API...")
 
@@ -40,4 +42,4 @@ setup_middleware(app)
 
 # Include routers
 app.include_router(auth_router)
-app.include_router(routes.router) 
+app.include_router(routes.router)

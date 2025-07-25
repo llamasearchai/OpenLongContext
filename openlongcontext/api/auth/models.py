@@ -1,13 +1,14 @@
 """Authentication database models."""
-from datetime import datetime
-from typing import Optional, List
-from enum import Enum
-from pydantic import BaseModel, EmailStr, Field, validator
-from passlib.context import CryptContext
 import secrets
 import string
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey, Table, JSON
-from sqlalchemy.orm import relationship, declarative_base
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional
+
+from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr, Field, validator
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Table
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
 # Password hashing
@@ -46,7 +47,7 @@ class TokenType(str, Enum):
 class User(Base):
     """User database model."""
     __tablename__ = "users"
-    
+
     id = Column(String, primary_key=True, default=lambda: f"user_{secrets.token_urlsafe(16)}")
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
@@ -58,30 +59,30 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Security fields
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
     password_changed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Relationships
     roles = relationship("Role", secondary=user_roles, back_populates="users")
     api_keys = relationship("APIKey", back_populates="user", cascade="all, delete-orphan")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
-    
+
     def verify_password(self, password: str) -> bool:
         """Verify password against hash."""
         return pwd_context.verify(password, self.hashed_password)
-    
+
     def set_password(self, password: str):
         """Set password hash."""
         self.hashed_password = pwd_context.hash(password)
         self.password_changed_at = datetime.utcnow()
-    
+
     def has_role(self, role_name: str) -> bool:
         """Check if user has a specific role."""
         return any(role.name == role_name for role in self.roles)
-    
+
     def get_permissions(self) -> set:
         """Get all permissions for the user."""
         permissions = set()
@@ -93,13 +94,13 @@ class User(Base):
 class Role(Base):
     """Role database model."""
     __tablename__ = "roles"
-    
+
     id = Column(String, primary_key=True, default=lambda: f"role_{secrets.token_urlsafe(8)}")
     name = Column(String, unique=True, nullable=False)
     description = Column(String, nullable=True)
     permissions = Column(JSON, nullable=True)  # List of permission strings
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     users = relationship("User", secondary=user_roles, back_populates="roles")
 
@@ -107,7 +108,7 @@ class Role(Base):
 class APIKey(Base):
     """API Key database model."""
     __tablename__ = "api_keys"
-    
+
     id = Column(String, primary_key=True, default=lambda: f"apikey_{secrets.token_urlsafe(16)}")
     key = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
@@ -116,15 +117,15 @@ class APIKey(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_used = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Permissions and rate limits
     permissions = Column(JSON, nullable=True)  # Override user permissions
     rate_limit = Column(String, nullable=True)  # Custom rate limit
     allowed_ips = Column(JSON, nullable=True)  # IP whitelist
-    
+
     # Relationships
     user = relationship("User", back_populates="api_keys")
-    
+
     @staticmethod
     def generate_key(prefix: str = "olc_") -> str:
         """Generate a secure API key."""
@@ -134,7 +135,7 @@ class APIKey(Base):
 class UserSession(Base):
     """User session database model."""
     __tablename__ = "user_sessions"
-    
+
     id = Column(String, primary_key=True, default=lambda: f"session_{secrets.token_urlsafe(16)}")
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
     token = Column(String, unique=True, nullable=False)
@@ -144,7 +145,7 @@ class UserSession(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
     last_activity = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     # Relationships
     user = relationship("User", back_populates="sessions")
 
@@ -163,12 +164,12 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """User creation schema."""
     password: str = Field(..., min_length=8)
-    
+
     @validator('password')
     def validate_password(cls, v):
         """Validate password complexity."""
         from .config import auth_config
-        
+
         if auth_config.require_uppercase and not any(c.isupper() for c in v):
             raise ValueError('Password must contain at least one uppercase letter')
         if auth_config.require_lowercase and not any(c.islower() for c in v):
@@ -198,7 +199,7 @@ class UserInDB(UserBase):
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
     roles: List[str] = []
-    
+
     class Config:
         orm_mode = True
 
@@ -210,7 +211,7 @@ class UserResponse(UserBase):
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
     roles: List[str] = []
-    
+
     class Config:
         orm_mode = True
 
@@ -247,7 +248,7 @@ class APIKeyResponse(BaseModel):
     name: str
     created_at: datetime
     expires_at: Optional[datetime] = None
-    
+
     class Config:
         orm_mode = True
 

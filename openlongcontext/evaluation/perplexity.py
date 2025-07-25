@@ -6,14 +6,15 @@ Comprehensive perplexity evaluation metrics for language models.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
+import logging
+from collections import defaultdict
+from typing import Dict, List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
-from typing import Dict, List, Optional
-import logging
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,11 @@ def compute_perplexity(
     # Flatten logits and targets
     logits_flat = logits.view(-1, logits.size(-1))
     targets_flat = targets.view(-1)
-    
+
     # Compute cross-entropy loss
     loss = F.cross_entropy(logits_flat, targets_flat, reduction='none')
     loss = loss.view(targets.shape)  # Reshape back to [batch_size, seq_len]
-    
+
     # Apply attention mask if provided
     if attention_mask is not None:
         loss = loss * attention_mask
@@ -56,7 +57,7 @@ def compute_perplexity(
             loss = loss.mean()
         elif reduction == "sum":
             loss = loss.sum()
-    
+
     # Convert to perplexity
     if reduction == "none":
         return torch.exp(loss)
@@ -83,14 +84,14 @@ def compute_token_level_perplexity(
     # Compute token-level cross-entropy
     logits_flat = logits.view(-1, logits.size(-1))
     targets_flat = targets.view(-1)
-    
+
     loss = F.cross_entropy(logits_flat, targets_flat, reduction='none')
     loss = loss.view(targets.shape)
-    
+
     # Apply attention mask
     if attention_mask is not None:
         loss = loss * attention_mask
-    
+
     # Convert to perplexity
     return torch.exp(loss)
 
@@ -119,14 +120,14 @@ def evaluate_model_perplexity(
     total_loss = 0.0
     total_tokens = 0
     perplexities = []
-    
+
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Evaluating perplexity"):
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch.get("attention_mask", None)
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
-            
+
             if max_length is not None and input_ids.size(1) > max_length:
                 # Use sliding window evaluation
                 batch_perplexity = evaluate_sliding_window_perplexity(
@@ -137,12 +138,12 @@ def evaluate_model_perplexity(
                 # Standard evaluation
                 outputs = model(input_ids, attention_mask=attention_mask)
                 logits = outputs.logits if hasattr(outputs, 'logits') else outputs
-                
+
                 # Shift logits and targets for next-token prediction
                 shift_logits = logits[..., :-1, :].contiguous()
                 shift_targets = input_ids[..., 1:].contiguous()
                 shift_mask = attention_mask[..., 1:] if attention_mask is not None else None
-                
+
                 # Compute loss
                 loss = F.cross_entropy(
                     shift_logits.view(-1, shift_logits.size(-1)),
@@ -150,7 +151,7 @@ def evaluate_model_perplexity(
                     reduction='none'
                 )
                 loss = loss.view(shift_targets.shape)
-                
+
                 if shift_mask is not None:
                     loss = loss * shift_mask
                     batch_tokens = shift_mask.sum().item()
@@ -158,18 +159,18 @@ def evaluate_model_perplexity(
                 else:
                     batch_tokens = shift_targets.numel()
                     batch_loss = loss.sum().item()
-                
+
                 total_loss += batch_loss
                 total_tokens += batch_tokens
-                
+
                 # Compute batch perplexity
                 if batch_tokens > 0:
                     batch_perplexity = np.exp(batch_loss / batch_tokens)
                     perplexities.append(batch_perplexity)
-    
+
     # Compute overall metrics
     overall_perplexity = np.exp(total_loss / total_tokens) if total_tokens > 0 else float('inf')
-    
+
     return {
         "perplexity": overall_perplexity,
         "loss": total_loss / total_tokens if total_tokens > 0 else float('inf'),
@@ -202,26 +203,26 @@ def evaluate_sliding_window_perplexity(
     """
     _, seq_len = input_ids.shape
     perplexities = []
-    
+
     for i in range(0, seq_len - max_length + 1, stride):
         end_pos = min(i + max_length, seq_len)
-        
+
         # Extract window
         window_input = input_ids[:, i:end_pos]
         window_mask = attention_mask[:, i:end_pos] if attention_mask is not None else None
-        
+
         # Forward pass
         outputs = model(window_input, attention_mask=window_mask)
         logits = outputs.logits if hasattr(outputs, 'logits') else outputs
-        
+
         # Compute perplexity for this window
         shift_logits = logits[..., :-1, :].contiguous()
         shift_targets = window_input[..., 1:].contiguous()
         shift_mask = window_mask[..., 1:] if window_mask is not None else None
-        
+
         window_perplexity = compute_perplexity(shift_logits, shift_targets, shift_mask)
         perplexities.append(window_perplexity)
-    
+
     return perplexities
 
 
@@ -244,19 +245,19 @@ def compute_conditional_perplexity(
         Conditional perplexity
     """
     model.eval()
-    
+
     # Concatenate context and target
     full_input = torch.cat([context, target], dim=1).to(device)
     context_len = context.size(1)
-    
+
     with torch.no_grad():
         outputs = model(full_input)
         logits = outputs.logits if hasattr(outputs, 'logits') else outputs
-        
+
         # Only compute loss on target tokens
         target_logits = logits[:, context_len-1:-1, :]  # Shift for next-token prediction
         target_tokens = target
-        
+
         perplexity = compute_perplexity(target_logits, target_tokens)
         return perplexity
 
@@ -281,32 +282,32 @@ def analyze_perplexity_by_position(
     """
     model.eval()
     position_losses = defaultdict(list)
-    
+
     with torch.no_grad():
         for batch in tqdm(dataloader, desc="Analyzing position-wise perplexity"):
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch.get("attention_mask", None)
             if attention_mask is not None:
                 attention_mask = attention_mask.to(device)
-            
+
             # Limit sequence length
             seq_len = min(input_ids.size(1), max_positions + 1)
             input_ids = input_ids[:, :seq_len]
             if attention_mask is not None:
                 attention_mask = attention_mask[:, :seq_len]
-            
+
             outputs = model(input_ids, attention_mask=attention_mask)
             logits = outputs.logits if hasattr(outputs, 'logits') else outputs
-            
+
             # Compute token-level perplexity
             shift_logits = logits[..., :-1, :].contiguous()
             shift_targets = input_ids[..., 1:].contiguous()
             shift_mask = attention_mask[..., 1:] if attention_mask is not None else None
-            
+
             token_perplexities = compute_token_level_perplexity(
                 shift_logits, shift_targets, shift_mask
             )
-            
+
             # Collect perplexities by position
             for pos in range(token_perplexities.size(1)):
                 if shift_mask is None or shift_mask[:, pos].sum() > 0:
@@ -314,17 +315,17 @@ def analyze_perplexity_by_position(
                     if shift_mask is not None:
                         valid_perplexities = valid_perplexities[shift_mask[:, pos].bool()]
                     position_losses[pos].extend(valid_perplexities.cpu().numpy())
-    
+
     # Compute statistics for each position
     positions = sorted(position_losses.keys())
     mean_perplexities = []
     std_perplexities = []
-    
+
     for pos in positions:
         perplexities = np.array(position_losses[pos])
         mean_perplexities.append(np.mean(perplexities))
         std_perplexities.append(np.std(perplexities))
-    
+
     return {
         "positions": np.array(positions),
         "mean_perplexity": np.array(mean_perplexities),
@@ -348,11 +349,11 @@ def plot_perplexity_analysis(
         Matplotlib figure
     """
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
-    
+
     positions = position_analysis["positions"]
     mean_perplexity = position_analysis["mean_perplexity"]
     std_perplexity = position_analysis["std_perplexity"]
-    
+
     # Plot mean perplexity by position
     ax1.plot(positions, mean_perplexity, 'b-', linewidth=2, label='Mean Perplexity')
     ax1.fill_between(
@@ -368,7 +369,7 @@ def plot_perplexity_analysis(
     ax1.set_title('Perplexity by Token Position')
     ax1.legend()
     ax1.grid(True, alpha=0.3)
-    
+
     # Plot log perplexity for better visualization
     ax2.plot(positions, np.log(mean_perplexity), 'r-', linewidth=2, label='Log Mean Perplexity')
     ax2.fill_between(
@@ -384,12 +385,12 @@ def plot_perplexity_analysis(
     ax2.set_title('Log Perplexity by Token Position')
     ax2.legend()
     ax2.grid(True, alpha=0.3)
-    
+
     plt.tight_layout()
-    
+
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    
+
     return fig
 
 
@@ -410,13 +411,13 @@ def compare_model_perplexities(
         Dictionary containing perplexity results for each model
     """
     results = {}
-    
+
     for model_name, model in models.items():
         logger.info(f"Evaluating perplexity for {model_name}")
         model_results = evaluate_model_perplexity(model, dataloader, device)
         results[model_name] = model_results
         logger.info(f"{model_name} perplexity: {model_results['perplexity']:.2f}")
-    
+
     return results
 
 

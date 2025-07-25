@@ -6,20 +6,21 @@ Comprehensive MLflow integration for experiment tracking and model management.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
+import logging
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
 import mlflow
 import mlflow.pytorch
-from typing import Dict, Any, Optional, Union
-import logging
-import torch
 import numpy as np
-from pathlib import Path
+import torch
 
 logger = logging.getLogger(__name__)
 
 
 class MLflowTracker:
     """MLflow experiment tracking integration."""
-    
+
     def __init__(
         self,
         experiment_name: str = "openlongcontext",
@@ -35,11 +36,11 @@ class MLflowTracker:
             artifact_location: Location to store artifacts
         """
         self.experiment_name = experiment_name
-        
+
         # Set tracking URI if provided
         if tracking_uri:
             mlflow.set_tracking_uri(tracking_uri)
-        
+
         # Create or get experiment
         try:
             experiment = mlflow.get_experiment_by_name(experiment_name)
@@ -52,26 +53,26 @@ class MLflowTracker:
             else:
                 experiment_id = experiment.experiment_id
                 logger.info(f"Using existing MLflow experiment: {experiment_name} (ID: {experiment_id})")
-            
+
             mlflow.set_experiment(experiment_name)
             self.experiment_id = experiment_id
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize MLflow experiment: {e}")
             raise
-    
+
     def start_run(self, run_name: Optional[str] = None, tags: Optional[Dict[str, str]] = None):
         """Start a new MLflow run."""
         mlflow.start_run(run_name=run_name, tags=tags)
         logger.info(f"Started MLflow run: {mlflow.active_run().info.run_id}")
-    
+
     def end_run(self):
         """End the current MLflow run."""
         if mlflow.active_run():
             run_id = mlflow.active_run().info.run_id
             mlflow.end_run()
             logger.info(f"Ended MLflow run: {run_id}")
-    
+
     def log_params(self, params: Dict[str, Any]):
         """Log parameters to MLflow."""
         try:
@@ -82,12 +83,12 @@ class MLflowTracker:
                     processed_params[key] = str(value)
                 else:
                     processed_params[key] = value
-            
+
             mlflow.log_params(processed_params)
             logger.debug(f"Logged {len(processed_params)} parameters to MLflow")
         except Exception as e:
             logger.error(f"Failed to log parameters: {e}")
-    
+
     def log_metrics(self, metrics: Dict[str, Union[float, int]], step: Optional[int] = None):
         """Log metrics to MLflow."""
         try:
@@ -96,11 +97,11 @@ class MLflowTracker:
                     mlflow.log_metric(key, float(value), step=step)
                 else:
                     logger.warning(f"Skipping non-numeric metric: {key} = {value}")
-            
+
             logger.debug(f"Logged {len(metrics)} metrics to MLflow")
         except Exception as e:
             logger.error(f"Failed to log metrics: {e}")
-    
+
     def log_artifact(self, local_path: str, artifact_path: Optional[str] = None):
         """Log an artifact to MLflow."""
         try:
@@ -108,7 +109,7 @@ class MLflowTracker:
             logger.debug(f"Logged artifact: {local_path}")
         except Exception as e:
             logger.error(f"Failed to log artifact: {e}")
-    
+
     def log_artifacts(self, local_dir: str, artifact_path: Optional[str] = None):
         """Log a directory of artifacts to MLflow."""
         try:
@@ -116,7 +117,7 @@ class MLflowTracker:
             logger.debug(f"Logged artifacts from: {local_dir}")
         except Exception as e:
             logger.error(f"Failed to log artifacts: {e}")
-    
+
     def log_model(
         self,
         model: torch.nn.Module,
@@ -135,7 +136,7 @@ class MLflowTracker:
             logger.info(f"Logged model to MLflow: {artifact_path}")
         except Exception as e:
             logger.error(f"Failed to log model: {e}")
-    
+
     def log_text(self, text: str, artifact_file: str):
         """Log text content as an artifact."""
         try:
@@ -143,7 +144,7 @@ class MLflowTracker:
             logger.debug(f"Logged text artifact: {artifact_file}")
         except Exception as e:
             logger.error(f"Failed to log text: {e}")
-    
+
     def log_dict(self, dictionary: Dict[str, Any], artifact_file: str):
         """Log dictionary as JSON artifact."""
         try:
@@ -151,7 +152,7 @@ class MLflowTracker:
             logger.debug(f"Logged dict artifact: {artifact_file}")
         except Exception as e:
             logger.error(f"Failed to log dict: {e}")
-    
+
     def set_tags(self, tags: Dict[str, str]):
         """Set tags for the current run."""
         try:
@@ -159,7 +160,7 @@ class MLflowTracker:
             logger.debug(f"Set {len(tags)} tags")
         except Exception as e:
             logger.error(f"Failed to set tags: {e}")
-    
+
     def get_run_info(self) -> Optional[Dict[str, Any]]:
         """Get information about the current run."""
         if mlflow.active_run():
@@ -176,7 +177,7 @@ class MLflowTracker:
 
 class MLflowContextManager:
     """Context manager for MLflow runs."""
-    
+
     def __init__(
         self,
         tracker: MLflowTracker,
@@ -186,11 +187,11 @@ class MLflowContextManager:
         self.tracker = tracker
         self.run_name = run_name
         self.tags = tags
-    
+
     def __enter__(self):
         self.tracker.start_run(self.run_name, self.tags)
         return self.tracker
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.tracker.end_run()
 
@@ -236,18 +237,18 @@ def log_experiment_results(
     try:
         # Log parameters
         tracker.log_params(config)
-        
+
         # Log metrics
         tracker.log_metrics(metrics)
-        
+
         # Set tags
         if tags:
             tracker.set_tags(tags)
-        
+
         # Log model
         if model:
             tracker.log_model(model)
-        
+
         # Log artifacts
         if artifacts:
             for local_path, artifact_path in artifacts.items():
@@ -255,9 +256,9 @@ def log_experiment_results(
                     tracker.log_artifacts(local_path, artifact_path)
                 else:
                     tracker.log_artifact(local_path, artifact_path)
-        
+
         logger.info("Successfully logged experiment results to MLflow")
-        
+
     except Exception as e:
         logger.error(f"Failed to log experiment results: {e}")
         raise

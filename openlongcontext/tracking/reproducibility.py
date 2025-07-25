@@ -6,19 +6,20 @@ Comprehensive reproducibility utilities for ensuring consistent experiment resul
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-import random
-import numpy as np
-import torch
-import os
 import hashlib
 import json
 import logging
-from typing import Dict, Any, Optional, Union
-from pathlib import Path
+import os
+import platform
+import random
 import subprocess
 import sys
-import platform
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
+import numpy as np
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -33,24 +34,24 @@ def set_random_seeds(seed: int = 42):
     try:
         # Python random
         random.seed(seed)
-        
+
         # NumPy
         np.random.seed(seed)
-        
+
         # PyTorch
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
-        
+
         # Additional PyTorch settings for reproducibility
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
-        
+
         # Set environment variable for Python hash seed
         os.environ['PYTHONHASHSEED'] = str(seed)
-        
+
         logger.info(f"Set random seeds to {seed} for reproducibility")
-        
+
     except Exception as e:
         logger.error(f"Failed to set random seeds: {e}")
         raise
@@ -87,7 +88,7 @@ def get_system_info() -> Dict[str, Any]:
             },
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         # Add GPU information if available
         if torch.cuda.is_available():
             info["hardware"]["cuda_available"] = True
@@ -104,12 +105,12 @@ def get_system_info() -> Dict[str, Any]:
             ]
         else:
             info["hardware"]["cuda_available"] = False
-        
+
         # Add package versions
         info["packages"] = get_package_versions()
-        
+
         return info
-        
+
     except Exception as e:
         logger.error(f"Failed to get system info: {e}")
         return {"error": str(e)}
@@ -123,60 +124,60 @@ def get_package_versions() -> Dict[str, str]:
         Dictionary mapping package names to versions
     """
     packages = {}
-    
+
     try:
         # Core packages
         import torch
         packages["torch"] = torch.__version__
-        
+
         import numpy
         packages["numpy"] = numpy.__version__
-        
+
         try:
             import transformers
             packages["transformers"] = transformers.__version__
         except ImportError:
             pass
-        
+
         try:
             import datasets
             packages["datasets"] = getattr(datasets, '__version__', 'unknown')
         except ImportError:
             pass
-        
+
         try:
             import mlflow
             packages["mlflow"] = mlflow.__version__
         except ImportError:
             pass
-        
+
         try:
             import wandb
             packages["wandb"] = wandb.__version__
         except ImportError:
             pass
-        
+
         try:
             import tensorboard
             packages["tensorboard"] = tensorboard.__version__
         except ImportError:
             pass
-        
+
         try:
             import omegaconf
             packages["omegaconf"] = omegaconf.__version__
         except ImportError:
             pass
-        
+
         try:
             import hydra
             packages["hydra"] = hydra.__version__
         except ImportError:
             pass
-        
+
     except Exception as e:
         logger.warning(f"Failed to get some package versions: {e}")
-    
+
     return packages
 
 
@@ -188,7 +189,7 @@ def get_git_info() -> Dict[str, Any]:
         Dictionary containing Git information
     """
     git_info = {}
-    
+
     try:
         # Check if we're in a git repository
         result = subprocess.run(
@@ -197,7 +198,7 @@ def get_git_info() -> Dict[str, Any]:
             text=True,
             timeout=10
         )
-        
+
         if result.returncode == 0:
             # Get commit hash
             result = subprocess.run(
@@ -208,7 +209,7 @@ def get_git_info() -> Dict[str, Any]:
             )
             if result.returncode == 0:
                 git_info["commit_hash"] = result.stdout.strip()
-            
+
             # Get branch name
             result = subprocess.run(
                 ["git", "branch", "--show-current"],
@@ -218,7 +219,7 @@ def get_git_info() -> Dict[str, Any]:
             )
             if result.returncode == 0:
                 git_info["branch"] = result.stdout.strip()
-            
+
             # Check for uncommitted changes
             result = subprocess.run(
                 ["git", "status", "--porcelain"],
@@ -229,7 +230,7 @@ def get_git_info() -> Dict[str, Any]:
             if result.returncode == 0:
                 git_info["dirty"] = bool(result.stdout.strip())
                 git_info["uncommitted_changes"] = result.stdout.strip().split('\n') if result.stdout.strip() else []
-            
+
             # Get remote URL
             result = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
@@ -239,11 +240,11 @@ def get_git_info() -> Dict[str, Any]:
             )
             if result.returncode == 0:
                 git_info["remote_url"] = result.stdout.strip()
-        
+
     except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
         logger.warning(f"Failed to get git info: {e}")
         git_info["error"] = str(e)
-    
+
     return git_info
 
 
@@ -284,7 +285,7 @@ def save_reproducibility_info(
     try:
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         repro_info = {
             "seed": seed,
             "config": config,
@@ -293,19 +294,19 @@ def save_reproducibility_info(
             "git_info": get_git_info(),
             "timestamp": datetime.now().isoformat(),
         }
-        
+
         if additional_info:
             repro_info["additional_info"] = additional_info
-        
+
         # Save to JSON file
         repro_file = output_dir / "reproducibility_info.json"
         with open(repro_file, 'w') as f:
             json.dump(repro_info, f, indent=2, default=str)
-        
+
         logger.info(f"Saved reproducibility info to {repro_file}")
-        
+
         return repro_info
-        
+
     except Exception as e:
         logger.error(f"Failed to save reproducibility info: {e}")
         raise
@@ -322,12 +323,12 @@ def load_reproducibility_info(file_path: Union[str, Path]) -> Dict[str, Any]:
         Dictionary containing reproducibility information
     """
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             repro_info = json.load(f)
-        
+
         logger.info(f"Loaded reproducibility info from {file_path}")
         return repro_info
-        
+
     except Exception as e:
         logger.error(f"Failed to load reproducibility info: {e}")
         raise
@@ -336,7 +337,7 @@ def load_reproducibility_info(file_path: Union[str, Path]) -> Dict[str, Any]:
 def verify_reproducibility(
     config: Dict[str, Any],
     reference_file: Union[str, Path],
-    tolerance: float = 1e-6
+    tolerance: float = 1e-6  # noqa: ARG001
 ) -> Dict[str, Any]:
     """
     Verify that current setup matches reference reproducibility info.
@@ -357,18 +358,18 @@ def verify_reproducibility(
             "system_info": get_system_info(),
             "git_info": get_git_info(),
         }
-        
+
         verification = {
             "config_match": reference_info["config_hash"] == current_info["config_hash"],
             "system_differences": [],
             "git_differences": [],
             "package_differences": [],
         }
-        
+
         # Check system differences
         ref_system = reference_info.get("system_info", {})
         curr_system = current_info.get("system_info", {})
-        
+
         for key in ["platform", "packages"]:
             if key in ref_system and key in curr_system:
                 if ref_system[key] != curr_system[key]:
@@ -377,11 +378,11 @@ def verify_reproducibility(
                         "reference": ref_system[key],
                         "current": curr_system[key]
                     })
-        
+
         # Check git differences
         ref_git = reference_info.get("git_info", {})
         curr_git = current_info.get("git_info", {})
-        
+
         for key in ["commit_hash", "branch", "dirty"]:
             if key in ref_git and key in curr_git:
                 if ref_git[key] != curr_git[key]:
@@ -390,15 +391,15 @@ def verify_reproducibility(
                         "reference": ref_git[key],
                         "current": curr_git[key]
                     })
-        
+
         verification["reproducible"] = (
             verification["config_match"] and
             len(verification["system_differences"]) == 0 and
             len(verification["git_differences"]) == 0
         )
-        
+
         return verification
-        
+
     except Exception as e:
         logger.error(f"Failed to verify reproducibility: {e}")
         return {"error": str(e), "reproducible": False}
@@ -406,7 +407,7 @@ def verify_reproducibility(
 
 class ReproducibilityContext:
     """Context manager for reproducibility setup."""
-    
+
     def __init__(
         self,
         seed: int = 42,
@@ -417,19 +418,19 @@ class ReproducibilityContext:
         self.output_dir = output_dir
         self.config = config or {}
         self.repro_info = None
-    
+
     def __enter__(self):
         # Set random seeds
         set_random_seeds(self.seed)
-        
+
         # Save reproducibility info if output directory is provided
         if self.output_dir:
             self.repro_info = save_reproducibility_info(
                 self.output_dir, self.config, self.seed
             )
-        
+
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Additional cleanup if needed
         pass
@@ -452,10 +453,10 @@ def ensure_reproducibility(
         Dictionary containing reproducibility information
     """
     set_random_seeds(seed)
-    
+
     if output_dir:
         return save_reproducibility_info(output_dir, config or {}, seed)
-    
+
     return {
         "seed": seed,
         "config": config or {},

@@ -1,6 +1,7 @@
 import io
-import pytest
+
 from fastapi.testclient import TestClient
+
 from openlongcontext.api import app
 
 client = TestClient(app)
@@ -41,4 +42,4 @@ def test_query_nonexistent_document():
 def test_get_metadata_nonexistent_document():
     response = client.get("/docs/nonexistent")
     assert response.status_code == 404
-    assert response.json()["detail"] == "Document not found." 
+    assert response.json()["detail"] == "Document not found."

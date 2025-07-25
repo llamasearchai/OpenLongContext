@@ -2,12 +2,13 @@
 Configuration management for OpenLongContext.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Union
-from pathlib import Path
-import yaml
 import json
-from omegaconf import OmegaConf, DictConfig
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import yaml
+from omegaconf import DictConfig, OmegaConf
 
 
 @dataclass
@@ -31,7 +32,7 @@ class ModelConfig:
     additional_params: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass 
+@dataclass
 class DataConfig:
     """Data configuration."""
     dataset_name: str = "wikitext"
@@ -109,7 +110,7 @@ class ExperimentConfig:
 
 class Config:
     """Main configuration class."""
-    
+
     def __init__(
         self,
         model: Optional[Union[ModelConfig, Dict[str, Any]]] = None,
@@ -127,7 +128,7 @@ class Config:
             self.model = ModelConfig(**model)
         else:
             self.model = model
-            
+
         # Initialize data config
         if data is None:
             self.data = DataConfig()
@@ -135,7 +136,7 @@ class Config:
             self.data = DataConfig(**data)
         else:
             self.data = data
-            
+
         # Initialize training config
         if training is None:
             self.training = TrainingConfig()
@@ -143,7 +144,7 @@ class Config:
             self.training = TrainingConfig(**training)
         else:
             self.training = training
-            
+
         # Initialize evaluation config
         if evaluation is None:
             self.evaluation = EvaluationConfig()
@@ -151,7 +152,7 @@ class Config:
             self.evaluation = EvaluationConfig(**evaluation)
         else:
             self.evaluation = evaluation
-            
+
         # Initialize experiment config
         if experiment is None:
             self.experiment = ExperimentConfig()
@@ -159,30 +160,30 @@ class Config:
             self.experiment = ExperimentConfig(**experiment)
         else:
             self.experiment = experiment
-            
+
         # Store additional parameters
         self.additional_params = kwargs
-        
+
     @classmethod
     def from_yaml(cls, path: Union[str, Path]) -> "Config":
         """Load configuration from YAML file."""
-        with open(path, 'r') as f:
+        with open(path) as f:
             config_dict = yaml.safe_load(f)
         return cls(**config_dict)
-    
+
     @classmethod
     def from_json(cls, path: Union[str, Path]) -> "Config":
         """Load configuration from JSON file."""
-        with open(path, 'r') as f:
+        with open(path) as f:
             config_dict = json.load(f)
         return cls(**config_dict)
-    
+
     @classmethod
     def from_omegaconf(cls, config: DictConfig) -> "Config":
         """Load configuration from OmegaConf DictConfig."""
         config_dict = OmegaConf.to_container(config, resolve=True)
         return cls(**config_dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary."""
         return {
@@ -193,17 +194,17 @@ class Config:
             "experiment": self.experiment.__dict__,
             **self.additional_params
         }
-    
+
     def save_yaml(self, path: Union[str, Path]) -> None:
         """Save configuration to YAML file."""
         with open(path, 'w') as f:
             yaml.dump(self.to_dict(), f, default_flow_style=False)
-    
+
     def save_json(self, path: Union[str, Path]) -> None:
         """Save configuration to JSON file."""
         with open(path, 'w') as f:
             json.dump(self.to_dict(), f, indent=2)
-    
+
     def __repr__(self) -> str:
         """String representation."""
         return f"Config(model={self.model.name}, data={self.data.dataset_name}, experiment={self.experiment.name})"

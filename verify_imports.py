@@ -68,13 +68,13 @@ def main():
     # Summary
     print(f"\n{'='*50}")
     if failed:
-        print(f"❌ {len(failed)} imports failed:")
+        print(f"ERROR: {len(failed)} imports failed:")
         for module in failed:
             print(f"   - {module}")
         print("\nTo fix, run: pip install -r requirements.txt")
         sys.exit(1)
     else:
-        print("✅ All imports successful!")
+        print("SUCCESS: All imports successful!")
         print("\nYour environment is properly configured.")
         sys.exit(0)
 

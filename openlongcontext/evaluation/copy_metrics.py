@@ -7,10 +7,11 @@ Provides comprehensive metrics for assessing model copying ability.
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
-import torch
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Union
 import logging
+from typing import Dict, List, Optional, Union
+
+import numpy as np
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +23,11 @@ class CopyMetrics:
     Provides various metrics to assess how well models can copy
     sequences in long-context scenarios.
     """
-    
+
     def __init__(self):
         """Initialize copy metrics calculator."""
         self.reset()
-    
+
     def reset(self):
         """Reset all accumulated metrics."""
         self.total_samples = 0
@@ -38,10 +39,10 @@ class CopyMetrics:
         self.sequence_accuracies = []
         self.copy_accuracies = []
         self.edit_distances = []
-    
+
     def compute_exact_match(
-        self, 
-        predictions: Union[List[int], torch.Tensor], 
+        self,
+        predictions: Union[List[int], torch.Tensor],
         targets: Union[List[int], torch.Tensor]
     ) -> float:
         """
@@ -56,14 +57,18 @@ class CopyMetrics:
         """
         if isinstance(predictions, torch.Tensor):
             predictions = predictions.tolist()
+        elif hasattr(predictions, 'tolist'):
+            predictions = predictions.tolist()
         if isinstance(targets, torch.Tensor):
             targets = targets.tolist()
-        
+        elif hasattr(targets, 'tolist'):
+            targets = targets.tolist()
+
         return 1.0 if predictions == targets else 0.0
-    
+
     def compute_token_accuracy(
-        self, 
-        predictions: Union[List[int], torch.Tensor], 
+        self,
+        predictions: Union[List[int], torch.Tensor],
         targets: Union[List[int], torch.Tensor]
     ) -> float:
         """
@@ -78,18 +83,22 @@ class CopyMetrics:
         """
         if isinstance(predictions, torch.Tensor):
             predictions = predictions.tolist()
+        elif hasattr(predictions, 'tolist'):
+            predictions = predictions.tolist()
         if isinstance(targets, torch.Tensor):
             targets = targets.tolist()
-        
+        elif hasattr(targets, 'tolist'):
+            targets = targets.tolist()
+
         if len(targets) == 0:
             return 0.0
-        
+
         correct = sum(1 for p, t in zip(predictions, targets) if p == t)
         return correct / len(targets)
-    
+
     def compute_copy_accuracy(
-        self, 
-        predictions: Union[List[int], torch.Tensor], 
+        self,
+        predictions: Union[List[int], torch.Tensor],
         targets: Union[List[int], torch.Tensor],
         copy_start: int,
         copy_length: int
@@ -108,23 +117,27 @@ class CopyMetrics:
         """
         if isinstance(predictions, torch.Tensor):
             predictions = predictions.tolist()
+        elif hasattr(predictions, 'tolist'):
+            predictions = predictions.tolist()
         if isinstance(targets, torch.Tensor):
             targets = targets.tolist()
-        
+        elif hasattr(targets, 'tolist'):
+            targets = targets.tolist()
+
         # Extract copy regions
         copy_end = copy_start + copy_length
         pred_copy = predictions[copy_start:copy_end] if copy_start < len(predictions) else []
         target_copy = targets[copy_start:copy_end] if copy_start < len(targets) else []
-        
+
         if len(target_copy) == 0:
             return 0.0
-        
+
         correct = sum(1 for p, t in zip(pred_copy, target_copy) if p == t)
         return correct / len(target_copy)
-    
+
     def compute_edit_distance(
-        self, 
-        predictions: Union[List[int], torch.Tensor], 
+        self,
+        predictions: Union[List[int], torch.Tensor],
         targets: Union[List[int], torch.Tensor]
     ) -> int:
         """
@@ -139,20 +152,24 @@ class CopyMetrics:
         """
         if isinstance(predictions, torch.Tensor):
             predictions = predictions.tolist()
+        elif hasattr(predictions, 'tolist'):
+            predictions = predictions.tolist()
         if isinstance(targets, torch.Tensor):
             targets = targets.tolist()
-        
+        elif hasattr(targets, 'tolist'):
+            targets = targets.tolist()
+
         m, n = len(predictions), len(targets)
-        
+
         # Create DP table
         dp = [[0] * (n + 1) for _ in range(m + 1)]
-        
+
         # Initialize base cases
         for i in range(m + 1):
             dp[i][0] = i
         for j in range(n + 1):
             dp[0][j] = j
-        
+
         # Fill DP table
         for i in range(1, m + 1):
             for j in range(1, n + 1):
@@ -164,12 +181,12 @@ class CopyMetrics:
                         dp[i][j-1],    # insertion
                         dp[i-1][j-1]   # substitution
                     )
-        
+
         return dp[m][n]
-    
+
     def update(
-        self, 
-        predictions: Union[List[int], torch.Tensor], 
+        self,
+        predictions: Union[List[int], torch.Tensor],
         targets: Union[List[int], torch.Tensor],
         copy_start: Optional[int] = None,
         copy_length: Optional[int] = None
@@ -186,42 +203,46 @@ class CopyMetrics:
         # Convert to lists if needed
         if isinstance(predictions, torch.Tensor):
             predictions = predictions.tolist()
+        elif hasattr(predictions, 'tolist'):
+            predictions = predictions.tolist()
         if isinstance(targets, torch.Tensor):
             targets = targets.tolist()
-        
+        elif hasattr(targets, 'tolist'):
+            targets = targets.tolist()
+
         # Update counters
         self.total_samples += 1
-        
+
         # Exact match
         exact_match = self.compute_exact_match(predictions, targets)
         self.total_exact_matches += exact_match
-        
+
         # Token accuracy
         token_acc = self.compute_token_accuracy(predictions, targets)
         self.sequence_accuracies.append(token_acc)
-        
+
         correct_tokens = sum(1 for p, t in zip(predictions, targets) if p == t)
         self.total_token_correct += correct_tokens
         self.total_tokens += len(targets)
-        
+
         # Copy accuracy (if copy region specified)
         if copy_start is not None and copy_length is not None:
             copy_acc = self.compute_copy_accuracy(predictions, targets, copy_start, copy_length)
             self.copy_accuracies.append(copy_acc)
-            
+
             # Extract copy regions for counting
             copy_end = copy_start + copy_length
             pred_copy = predictions[copy_start:copy_end] if copy_start < len(predictions) else []
             target_copy = targets[copy_start:copy_end] if copy_start < len(targets) else []
-            
+
             copy_correct = sum(1 for p, t in zip(pred_copy, target_copy) if p == t)
             self.total_copy_correct += copy_correct
             self.total_copy_tokens += len(target_copy)
-        
+
         # Edit distance
         edit_dist = self.compute_edit_distance(predictions, targets)
         self.edit_distances.append(edit_dist)
-    
+
     def compute(self) -> Dict[str, float]:
         """
         Compute final metrics.
@@ -239,7 +260,7 @@ class CopyMetrics:
                 'copy_accuracy_std': 0.0,
                 'total_samples': 0
             }
-        
+
         metrics = {
             'exact_match_accuracy': self.total_exact_matches / self.total_samples,
             'token_accuracy': self.total_token_correct / self.total_tokens if self.total_tokens > 0 else 0.0,
@@ -249,7 +270,7 @@ class CopyMetrics:
             'total_samples': self.total_samples,
             'total_tokens': self.total_tokens
         }
-        
+
         # Copy-specific metrics
         if self.copy_accuracies:
             metrics.update({
@@ -265,9 +286,9 @@ class CopyMetrics:
                 'copy_accuracy_std': 0.0,
                 'total_copy_tokens': 0
             })
-        
+
         return metrics
-    
+
     def batch_update(
         self,
         predictions: torch.Tensor,
@@ -285,20 +306,20 @@ class CopyMetrics:
             copy_lengths: Lengths of copy regions [batch_size]
         """
         batch_size = predictions.shape[0]
-        
+
         for i in range(batch_size):
             pred = predictions[i].tolist()
             target = targets[i].tolist()
-            
+
             copy_start = copy_starts[i].item() if copy_starts is not None else None
             copy_length = copy_lengths[i].item() if copy_lengths is not None else None
-            
+
             self.update(pred, target, copy_start, copy_length)
-    
+
     def get_summary(self) -> str:
         """Get a human-readable summary of metrics."""
         metrics = self.compute()
-        
+
         summary = f"""
 Copy Task Metrics Summary:
 ========================

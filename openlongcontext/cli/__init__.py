@@ -1,6 +1,7 @@
 import argparse
-import sys
 import subprocess
+import sys
+
 
 def main():
     parser = argparse.ArgumentParser(
