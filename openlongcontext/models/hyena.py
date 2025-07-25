@@ -1,106 +1,96 @@
-# File path: /Users/nemesis/OpenPre-Training/pyproject.toml
+"""
+Hyena model implementation for efficient long-context processing.
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel", "torch", "numpy"]
-build-backend = "setuptools.build_meta"
+Author: Nik Jois <nikjois@llamasearch.ai>
+"""
 
-[project]
-name = "openlongcontext"
-version = "1.0.0"
-description = "Ultimate Long-Context Scaling Research Platform for Principled Algorithmic and Empirical Study"
-authors = [
-    {name = "OpenLongContext Research Team", email = "research@openlongcontext.ai"}
-]
-readme = "README.md"
-license = {text = "Apache-2.0"}
-keywords = [
-    "long-context", "scaling-laws", "transformer-xl", "efficient-attention", "memory", "deep-learning", "openai"
-]
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Software Development :: Libraries :: Python Modules",
-]
-requires-python = ">=3.9"
-dependencies = [
-    "torch>=2.1.0",
-    "torchvision>=0.16.0",
-    "transformers>=4.35.0",
-    "datasets>=2.14.0",
-    "numpy>=1.24.0",
-    "scipy>=1.11.0",
-    "pandas>=2.1.0",
-    "omegaconf>=2.3.0",
-    "hydra-core>=1.3.0",
-    "wandb>=0.16.0",
-    "mlflow>=2.8.0",
-    "tensorboard>=2.15.0",
-    "matplotlib>=3.8.0",
-    "seaborn>=0.13.0",
-    "scikit-learn>=1.3.0",
-    "pyyaml>=6.0.0",
-    "tqdm>=4.65.0",
-    "rich>=13.6.0",
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-xdist>=3.4.0",
-]
+import torch
+import torch.nn as nn
+from typing import Dict, Any, Optional
 
-[project.optional-dependencies]
-dev = [
-    "jupyter>=1.0.0",
-    "jupyterlab>=4.0.0",
-    "notebook>=7.0.0",
-    "ipywidgets>=8.1.0",
-    "nbconvert>=7.0.0",
-    "black>=23.10.0",
-    "isort>=5.12.0",
-    "flake8>=6.1.0",
-    "mypy>=1.6.0",
-]
-research = [
-    "optuna>=3.4.0",
-    "ax-platform>=0.3.4",
-    "hyperopt>=0.2.7",
-    "pymc>=5.9.0",
-]
 
-[project.urls]
-Homepage = "https://github.com/openlongcontext/openlongcontext"
-Documentation = "https://openlongcontext.readthedocs.io"
-Repository = "https://github.com/openlongcontext/openlongcontext"
-"Bug Tracker" = "https://github.com/openlongcontext/openlongcontext/issues"
+class HyenaOperator(nn.Module):
+    """Hyena operator for subquadratic attention."""
+    
+    def __init__(self, d_model: int, l_max: int = 1024):
+        super().__init__()
+        self.d_model = d_model
+        self.l_max = l_max
+        
+        # Hyena filter
+        self.filter_fn = nn.Conv1d(
+            in_channels=1,
+            out_channels=d_model,
+            kernel_size=l_max,
+            padding=l_max // 2,
+            groups=1
+        )
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Apply Hyena operator."""
+        B, L, D = x.shape
+        
+        # Apply filter
+        x_reshaped = x.transpose(1, 2)  # (B, D, L)
+        filtered = self.filter_fn(x_reshaped.reshape(-1, 1, L))
+        filtered = filtered.reshape(B, D, L).transpose(1, 2)
+        
+        return filtered
 
-[project.scripts]
-openlongcontext = "openlongcontext.cli:main"
-openlongcontext-experiment = "openlongcontext.cli.run_experiment:main"
-openlongcontext-sweep = "openlongcontext.cli.sweep:main"
-openlongcontext-analyze = "openlongcontext.cli.analyze_results:main"
-openlongcontext-ablate = "openlongcontext.cli.ablate:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["openlongcontext*"]
-
-[tool.black]
-line-length = 100
-target-version = ['py39', 'py310', 'py311']
-include = '\.pyi?$'
-
-[tool.isort]
-profile = "black"
-line_length = 100
-multi_line_output = 3
-
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
+class HyenaForQuestionAnswering(nn.Module):
+    """Hyena model for question answering."""
+    
+    def __init__(
+        self,
+        vocab_size: int = 50257,
+        d_model: int = 768,
+        n_layers: int = 12,
+        max_length: int = 4096,
+        **kwargs
+    ):
+        super().__init__()
+        
+        self.d_model = d_model
+        self.max_length = max_length
+        
+        self.embedding = nn.Embedding(vocab_size, d_model)
+        self.position_embedding = nn.Embedding(max_length, d_model)
+        
+        self.layers = nn.ModuleList([
+            HyenaOperator(d_model, max_length) 
+            for _ in range(n_layers)
+        ])
+        
+        self.norm = nn.LayerNorm(d_model)
+        self.qa_outputs = nn.Linear(d_model, 2)
+        
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        **kwargs
+    ) -> Dict[str, torch.Tensor]:
+        """Forward pass."""
+        B, L = input_ids.shape
+        
+        # Embeddings
+        x = self.embedding(input_ids)
+        pos_ids = torch.arange(L, device=input_ids.device).unsqueeze(0).expand(B, -1)
+        x = x + self.position_embedding(pos_ids)
+        
+        # Apply Hyena layers
+        for layer in self.layers:
+            x = x + layer(x)
+            
+        x = self.norm(x)
+        logits = self.qa_outputs(x)
+        
+        start_logits, end_logits = logits.split(1, dim=-1)
+        start_logits = start_logits.squeeze(-1)
+        end_logits = end_logits.squeeze(-1)
+        
+        return {
+            "start_logits": start_logits,
+            "end_logits": end_logits,
+        }
