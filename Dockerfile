@@ -1,5 +1,5 @@
 # Multi-stage build for OpenLongContext
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 # Set build arguments
 ARG BUILDPLATFORM
@@ -31,7 +31,7 @@ RUN pip install --upgrade pip wheel setuptools && \
     pip install gunicorn uvicorn[standard]
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.13-slim as production
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
