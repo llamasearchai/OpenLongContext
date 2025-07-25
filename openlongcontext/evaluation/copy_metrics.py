@@ -1,14 +1,13 @@
 """
-Copy Metrics
+Copy Task Metrics
 
-Evaluation metrics for copy task performance.
-Provides comprehensive metrics for assessing model copying ability.
+Comprehensive evaluation metrics for copy task performance.
 
 Author: Nik Jois <nikjois@llamasearch.ai>
 """
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import torch
@@ -16,60 +15,105 @@ import torch
 logger = logging.getLogger(__name__)
 
 
+def _convert_to_list(data: Union[List[int], torch.Tensor, np.ndarray]) -> List[int]:
+    """Convert input data to a Python list."""
+    if isinstance(data, torch.Tensor):
+        return data.cpu().numpy().tolist()
+    elif isinstance(data, np.ndarray):
+        return data.tolist()
+    elif isinstance(data, list):
+        return data
+    else:
+        return list(data)
+
+
 class CopyMetrics:
-    """
-    Metrics for evaluating copy task performance.
+    """Metrics for evaluating copy task performance."""
     
-    Provides various metrics to assess how well models can copy
-    sequences in long-context scenarios.
-    """
-
     def __init__(self):
-        """Initialize copy metrics calculator."""
+        self.predictions = []
+        self.targets = []
         self.reset()
-
+    
     def reset(self):
-        """Reset all accumulated metrics."""
+        """Reset all metrics."""
+        self.predictions = []
+        self.targets = []
         self.total_samples = 0
-        self.total_exact_matches = 0
-        self.total_token_correct = 0
+        self.correct_samples = 0
         self.total_tokens = 0
-        self.total_copy_correct = 0
-        self.total_copy_tokens = 0
-        self.sequence_accuracies = []
-        self.copy_accuracies = []
-        self.edit_distances = []
-
+        self.correct_tokens = 0
+    
+    def update(
+        self,
+        predictions: Union[List[int], torch.Tensor, np.ndarray],
+        targets: Union[List[int], torch.Tensor, np.ndarray]
+    ):
+        """
+        Update metrics with new predictions and targets.
+        
+        Args:
+            predictions: Predicted token sequences
+            targets: Target token sequences
+        """
+        # Convert to lists for consistent processing
+        pred_list = _convert_to_list(predictions)
+        target_list = _convert_to_list(targets)
+        
+        self.predictions.append(pred_list)
+        self.targets.append(target_list)
+        
+        # Update token-level accuracy
+        self._update_token_accuracy(pred_list, target_list)
+        
+        # Update sequence-level accuracy
+        self._update_sequence_accuracy(pred_list, target_list)
+    
+    def _update_token_accuracy(self, predictions: List[int], targets: List[int]):
+        """Update token-level accuracy metrics."""
+        min_len = min(len(predictions), len(targets))
+        
+        for i in range(min_len):
+            self.total_tokens += 1
+            if predictions[i] == targets[i]:
+                self.correct_tokens += 1
+    
+    def _update_sequence_accuracy(self, predictions: List[int], targets: List[int]):
+        """Update sequence-level accuracy metrics."""
+        self.total_samples += 1
+        
+        # Check if sequences match exactly
+        if len(predictions) == len(targets) and predictions == targets:
+            self.correct_samples += 1
+    
     def compute_exact_match(
         self,
-        predictions: Union[List[int], torch.Tensor],
-        targets: Union[List[int], torch.Tensor]
+        predictions: Union[List[int], torch.Tensor, np.ndarray],
+        targets: Union[List[int], torch.Tensor, np.ndarray]
     ) -> float:
         """
-        Compute exact match accuracy.
+        Compute exact match accuracy between predictions and targets.
         
         Args:
             predictions: Predicted sequences
             targets: Target sequences
             
         Returns:
-            Exact match accuracy (1.0 if perfect match, 0.0 otherwise)
+            Exact match accuracy (0.0 to 1.0)
         """
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.tolist()
-        elif hasattr(predictions, 'tolist'):
-            predictions = predictions.tolist()
-        if isinstance(targets, torch.Tensor):
-            targets = targets.tolist()
-        elif hasattr(targets, 'tolist'):
-            targets = targets.tolist()
-
-        return 1.0 if predictions == targets else 0.0
-
+        # Convert to lists for consistent processing
+        pred_list = _convert_to_list(predictions)
+        target_list = _convert_to_list(targets)
+        
+        if len(pred_list) != len(target_list):
+            return 0.0
+        
+        return float(pred_list == target_list)
+    
     def compute_token_accuracy(
         self,
-        predictions: Union[List[int], torch.Tensor],
-        targets: Union[List[int], torch.Tensor]
+        predictions: Union[List[int], torch.Tensor, np.ndarray],
+        targets: Union[List[int], torch.Tensor, np.ndarray]
     ) -> float:
         """
         Compute token-level accuracy.
@@ -79,101 +123,58 @@ class CopyMetrics:
             targets: Target sequences
             
         Returns:
-            Token-level accuracy
+            Token-level accuracy (0.0 to 1.0)
         """
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.tolist()
-        elif hasattr(predictions, 'tolist'):
-            predictions = predictions.tolist()
-        if isinstance(targets, torch.Tensor):
-            targets = targets.tolist()
-        elif hasattr(targets, 'tolist'):
-            targets = targets.tolist()
-
-        if len(targets) == 0:
-            return 0.0
-
-        correct = sum(1 for p, t in zip(predictions, targets) if p == t)
-        return correct / len(targets)
-
-    def compute_copy_accuracy(
-        self,
-        predictions: Union[List[int], torch.Tensor],
-        targets: Union[List[int], torch.Tensor],
-        copy_start: int,
-        copy_length: int
-    ) -> float:
-        """
-        Compute accuracy for the copy region specifically.
+        # Convert to lists for consistent processing
+        pred_list = _convert_to_list(predictions)
+        target_list = _convert_to_list(targets)
         
-        Args:
-            predictions: Predicted sequences
-            targets: Target sequences
-            copy_start: Start position of copy region
-            copy_length: Length of copy region
-            
-        Returns:
-            Copy region accuracy
-        """
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.tolist()
-        elif hasattr(predictions, 'tolist'):
-            predictions = predictions.tolist()
-        if isinstance(targets, torch.Tensor):
-            targets = targets.tolist()
-        elif hasattr(targets, 'tolist'):
-            targets = targets.tolist()
-
-        # Extract copy regions
-        copy_end = copy_start + copy_length
-        pred_copy = predictions[copy_start:copy_end] if copy_start < len(predictions) else []
-        target_copy = targets[copy_start:copy_end] if copy_start < len(targets) else []
-
-        if len(target_copy) == 0:
+        if not pred_list or not target_list:
             return 0.0
-
-        correct = sum(1 for p, t in zip(pred_copy, target_copy) if p == t)
-        return correct / len(target_copy)
-
+        
+        min_len = min(len(pred_list), len(target_list))
+        correct = sum(1 for i in range(min_len) if pred_list[i] == target_list[i])
+        
+        return correct / min_len if min_len > 0 else 0.0
+    
     def compute_edit_distance(
         self,
-        predictions: Union[List[int], torch.Tensor],
-        targets: Union[List[int], torch.Tensor]
+        predictions: Union[List[int], torch.Tensor, np.ndarray],
+        targets: Union[List[int], torch.Tensor, np.ndarray]
     ) -> int:
         """
-        Compute edit distance (Levenshtein distance) between sequences.
+        Compute Levenshtein edit distance between sequences.
         
         Args:
             predictions: Predicted sequences
             targets: Target sequences
             
         Returns:
-            Edit distance
+            Edit distance (number of operations needed)
         """
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.tolist()
-        elif hasattr(predictions, 'tolist'):
-            predictions = predictions.tolist()
-        if isinstance(targets, torch.Tensor):
-            targets = targets.tolist()
-        elif hasattr(targets, 'tolist'):
-            targets = targets.tolist()
-
-        m, n = len(predictions), len(targets)
-
-        # Create DP table
-        dp = [[0] * (n + 1) for _ in range(m + 1)]
-
+        # Convert to lists for consistent processing
+        pred_list = _convert_to_list(predictions)
+        target_list = _convert_to_list(targets)
+        
+        return self._levenshtein_distance(pred_list, target_list)
+    
+    def _levenshtein_distance(self, seq1: List[int], seq2: List[int]) -> int:
+        """Compute Levenshtein distance between two sequences."""
+        len1, len2 = len(seq1), len(seq2)
+        
+        # Create distance matrix
+        dp = [[0] * (len2 + 1) for _ in range(len1 + 1)]
+        
         # Initialize base cases
-        for i in range(m + 1):
+        for i in range(len1 + 1):
             dp[i][0] = i
-        for j in range(n + 1):
+        for j in range(len2 + 1):
             dp[0][j] = j
-
-        # Fill DP table
-        for i in range(1, m + 1):
-            for j in range(1, n + 1):
-                if predictions[i-1] == targets[j-1]:
+        
+        # Fill the matrix
+        for i in range(1, len1 + 1):
+            for j in range(1, len2 + 1):
+                if seq1[i-1] == seq2[j-1]:
                     dp[i][j] = dp[i-1][j-1]
                 else:
                     dp[i][j] = 1 + min(
@@ -181,154 +182,240 @@ class CopyMetrics:
                         dp[i][j-1],    # insertion
                         dp[i-1][j-1]   # substitution
                     )
-
-        return dp[m][n]
-
-    def update(
+        
+        return dp[len1][len2]
+    
+    def compute_prefix_accuracy(
         self,
-        predictions: Union[List[int], torch.Tensor],
-        targets: Union[List[int], torch.Tensor],
-        copy_start: Optional[int] = None,
-        copy_length: Optional[int] = None
-    ):
+        predictions: Union[List[int], torch.Tensor, np.ndarray],
+        targets: Union[List[int], torch.Tensor, np.ndarray],
+        max_prefix_len: int = 10
+    ) -> Dict[str, float]:
         """
-        Update metrics with a new prediction.
+        Compute prefix accuracy for different prefix lengths.
         
         Args:
             predictions: Predicted sequences
             targets: Target sequences
-            copy_start: Start position of copy region
-            copy_length: Length of copy region
+            max_prefix_len: Maximum prefix length to evaluate
+            
+        Returns:
+            Dictionary mapping prefix lengths to accuracies
         """
-        # Convert to lists if needed
-        if isinstance(predictions, torch.Tensor):
-            predictions = predictions.tolist()
-        elif hasattr(predictions, 'tolist'):
-            predictions = predictions.tolist()
-        if isinstance(targets, torch.Tensor):
-            targets = targets.tolist()
-        elif hasattr(targets, 'tolist'):
-            targets = targets.tolist()
-
-        # Update counters
-        self.total_samples += 1
-
-        # Exact match
-        exact_match = self.compute_exact_match(predictions, targets)
-        self.total_exact_matches += exact_match
-
-        # Token accuracy
-        token_acc = self.compute_token_accuracy(predictions, targets)
-        self.sequence_accuracies.append(token_acc)
-
-        correct_tokens = sum(1 for p, t in zip(predictions, targets) if p == t)
-        self.total_token_correct += correct_tokens
-        self.total_tokens += len(targets)
-
-        # Copy accuracy (if copy region specified)
-        if copy_start is not None and copy_length is not None:
-            copy_acc = self.compute_copy_accuracy(predictions, targets, copy_start, copy_length)
-            self.copy_accuracies.append(copy_acc)
-
-            # Extract copy regions for counting
-            copy_end = copy_start + copy_length
-            pred_copy = predictions[copy_start:copy_end] if copy_start < len(predictions) else []
-            target_copy = targets[copy_start:copy_end] if copy_start < len(targets) else []
-
-            copy_correct = sum(1 for p, t in zip(pred_copy, target_copy) if p == t)
-            self.total_copy_correct += copy_correct
-            self.total_copy_tokens += len(target_copy)
-
-        # Edit distance
-        edit_dist = self.compute_edit_distance(predictions, targets)
-        self.edit_distances.append(edit_dist)
-
+        # Convert to lists for consistent processing
+        pred_list = _convert_to_list(predictions)
+        target_list = _convert_to_list(targets)
+        
+        prefix_accuracies = {}
+        max_len = min(len(pred_list), len(target_list), max_prefix_len)
+        
+        for prefix_len in range(1, max_len + 1):
+            pred_prefix = pred_list[:prefix_len]
+            target_prefix = target_list[:prefix_len]
+            
+            accuracy = float(pred_prefix == target_prefix)
+            prefix_accuracies[f"prefix_{prefix_len}"] = accuracy
+        
+        return prefix_accuracies
+    
     def compute(self) -> Dict[str, float]:
         """
-        Compute final metrics.
+        Compute all accumulated metrics.
         
         Returns:
-            Dictionary of computed metrics
+            Dictionary containing all computed metrics
         """
         if self.total_samples == 0:
             return {
-                'exact_match_accuracy': 0.0,
-                'token_accuracy': 0.0,
-                'copy_accuracy': 0.0,
-                'average_edit_distance': 0.0,
-                'sequence_accuracy_std': 0.0,
-                'copy_accuracy_std': 0.0,
-                'total_samples': 0
+                "exact_match_accuracy": 0.0,
+                "token_accuracy": 0.0,
+                "sequence_accuracy": 0.0,
+                "total_samples": 0,
+                "total_tokens": 0
             }
-
+        
         metrics = {
-            'exact_match_accuracy': self.total_exact_matches / self.total_samples,
-            'token_accuracy': self.total_token_correct / self.total_tokens if self.total_tokens > 0 else 0.0,
-            'average_edit_distance': np.mean(self.edit_distances) if self.edit_distances else 0.0,
-            'sequence_accuracy_mean': np.mean(self.sequence_accuracies) if self.sequence_accuracies else 0.0,
-            'sequence_accuracy_std': np.std(self.sequence_accuracies) if self.sequence_accuracies else 0.0,
-            'total_samples': self.total_samples,
-            'total_tokens': self.total_tokens
+            "exact_match_accuracy": self.correct_samples / self.total_samples,
+            "sequence_accuracy": self.correct_samples / self.total_samples,
+            "token_accuracy": self.correct_tokens / self.total_tokens if self.total_tokens > 0 else 0.0,
+            "total_samples": self.total_samples,
+            "total_tokens": self.total_tokens,
+            "correct_samples": self.correct_samples,
+            "correct_tokens": self.correct_tokens
+        }
+        
+        return metrics
+    
+    def get_detailed_analysis(self) -> Dict[str, any]:
+        """
+        Get detailed analysis of copy task performance.
+        
+        Returns:
+            Detailed analysis including per-sample metrics
+        """
+        if not self.predictions or not self.targets:
+            return {"error": "No data available for analysis"}
+        
+        sample_metrics = []
+        
+        for i, (pred, target) in enumerate(zip(self.predictions, self.targets)):
+            sample_metric = {
+                "sample_id": i,
+                "exact_match": self.compute_exact_match(pred, target),
+                "token_accuracy": self.compute_token_accuracy(pred, target),
+                "edit_distance": self.compute_edit_distance(pred, target),
+                "sequence_length": len(target),
+                "prediction_length": len(pred)
+            }
+            
+            # Add prefix accuracies
+            prefix_acc = self.compute_prefix_accuracy(pred, target)
+            sample_metric.update(prefix_acc)
+            
+            sample_metrics.append(sample_metric)
+        
+        # Aggregate statistics
+        overall_metrics = self.compute()
+        
+        return {
+            "overall_metrics": overall_metrics,
+            "sample_metrics": sample_metrics,
+            "num_samples": len(sample_metrics)
         }
 
-        # Copy-specific metrics
-        if self.copy_accuracies:
-            metrics.update({
-                'copy_accuracy': self.total_copy_correct / self.total_copy_tokens if self.total_copy_tokens > 0 else 0.0,
-                'copy_accuracy_mean': np.mean(self.copy_accuracies),
-                'copy_accuracy_std': np.std(self.copy_accuracies),
-                'total_copy_tokens': self.total_copy_tokens
-            })
-        else:
-            metrics.update({
-                'copy_accuracy': 0.0,
-                'copy_accuracy_mean': 0.0,
-                'copy_accuracy_std': 0.0,
-                'total_copy_tokens': 0
-            })
 
-        return metrics
-
-    def batch_update(
-        self,
-        predictions: torch.Tensor,
-        targets: torch.Tensor,
-        copy_starts: Optional[torch.Tensor] = None,
-        copy_lengths: Optional[torch.Tensor] = None
-    ):
-        """
-        Update metrics with a batch of predictions.
+def evaluate_copy_task(
+    model,
+    dataset,
+    device: str = "cpu",
+    max_samples: int = None
+) -> Dict[str, float]:
+    """
+    Evaluate a model on copy task dataset.
+    
+    Args:
+        model: Model to evaluate
+        dataset: Copy task dataset
+        device: Device to run evaluation on
+        max_samples: Maximum number of samples to evaluate
         
-        Args:
-            predictions: Batch of predicted sequences [batch_size, seq_len]
-            targets: Batch of target sequences [batch_size, seq_len]
-            copy_starts: Start positions of copy regions [batch_size]
-            copy_lengths: Lengths of copy regions [batch_size]
-        """
-        batch_size = predictions.shape[0]
+    Returns:
+        Dictionary containing evaluation metrics
+    """
+    model.eval()
+    metrics = CopyMetrics()
+    
+    samples_processed = 0
+    
+    with torch.no_grad():
+        for batch in dataset:
+            if max_samples and samples_processed >= max_samples:
+                break
+            
+            input_ids = batch["input_ids"].to(device)
+            target_ids = batch["target_ids"].to(device)
+            
+            # Generate predictions
+            outputs = model.generate(
+                input_ids,
+                max_length=input_ids.size(1) + target_ids.size(1),
+                num_return_sequences=1,
+                do_sample=False
+            )
+            
+            # Extract generated portion
+            generated = outputs[:, input_ids.size(1):]
+            
+            # Update metrics
+            for i in range(generated.size(0)):
+                pred = generated[i].cpu().numpy()
+                target = target_ids[i].cpu().numpy()
+                
+                metrics.update(pred, target)
+                samples_processed += 1
+                
+                if max_samples and samples_processed >= max_samples:
+                    break
+    
+    return metrics.compute()
 
-        for i in range(batch_size):
-            pred = predictions[i].tolist()
-            target = targets[i].tolist()
 
-            copy_start = copy_starts[i].item() if copy_starts is not None else None
-            copy_length = copy_lengths[i].item() if copy_lengths is not None else None
-
-            self.update(pred, target, copy_start, copy_length)
-
-    def get_summary(self) -> str:
-        """Get a human-readable summary of metrics."""
-        metrics = self.compute()
-
-        summary = f"""
-Copy Task Metrics Summary:
-========================
-Total Samples: {metrics['total_samples']}
-Exact Match Accuracy: {metrics['exact_match_accuracy']:.3f}
-Token Accuracy: {metrics['token_accuracy']:.3f}
-Copy Region Accuracy: {metrics['copy_accuracy']:.3f}
-Average Edit Distance: {metrics['average_edit_distance']:.2f}
-Sequence Accuracy (mean ± std): {metrics['sequence_accuracy_mean']:.3f} ± {metrics['sequence_accuracy_std']:.3f}
-Copy Accuracy (mean ± std): {metrics['copy_accuracy_mean']:.3f} ± {metrics['copy_accuracy_std']:.3f}
-"""
-        return summary
+def analyze_copy_errors(
+    predictions: List[List[int]],
+    targets: List[List[int]]
+) -> Dict[str, any]:
+    """
+    Analyze common error patterns in copy task predictions.
+    
+    Args:
+        predictions: List of predicted sequences
+        targets: List of target sequences
+        
+    Returns:
+        Analysis of error patterns
+    """
+    error_analysis = {
+        "total_samples": len(predictions),
+        "error_samples": 0,
+        "error_types": {
+            "length_mismatch": 0,
+            "prefix_errors": 0,
+            "suffix_errors": 0,
+            "middle_errors": 0,
+            "complete_mismatch": 0
+        },
+        "length_statistics": {
+            "avg_pred_length": 0.0,
+            "avg_target_length": 0.0,
+            "length_diff_avg": 0.0
+        }
+    }
+    
+    total_pred_len = 0
+    total_target_len = 0
+    total_length_diff = 0
+    
+    for pred, target in zip(predictions, targets):
+        total_pred_len += len(pred)
+        total_target_len += len(target)
+        total_length_diff += abs(len(pred) - len(target))
+        
+        if pred != target:
+            error_analysis["error_samples"] += 1
+            
+            # Analyze error type
+            if len(pred) != len(target):
+                error_analysis["error_types"]["length_mismatch"] += 1
+            else:
+                # Same length, analyze position of errors
+                errors_at_start = 0
+                errors_at_end = 0
+                
+                # Count errors from start
+                for i, (p, t) in enumerate(zip(pred, target)):
+                    if p != t:
+                        break
+                    errors_at_start = i + 1
+                
+                # Count errors from end
+                for i, (p, t) in enumerate(zip(reversed(pred), reversed(target))):
+                    if p != t:
+                        break
+                    errors_at_end = i + 1
+                
+                if errors_at_start == 0:
+                    error_analysis["error_types"]["prefix_errors"] += 1
+                elif errors_at_end == 0:
+                    error_analysis["error_types"]["suffix_errors"] += 1
+                elif errors_at_start + errors_at_end < len(pred):
+                    error_analysis["error_types"]["middle_errors"] += 1
+                else:
+                    error_analysis["error_types"]["complete_mismatch"] += 1
+    
+    # Calculate statistics
+    if len(predictions) > 0:
+        error_analysis["length_statistics"]["avg_pred_length"] = total_pred_len / len(predictions)
+        error_analysis["length_statistics"]["avg_target_length"] = total_target_len / len(predictions)
+        error_analysis["length_statistics"]["length_diff_avg"] = total_length_diff / len(predictions)
+    
+    return error_analysis
