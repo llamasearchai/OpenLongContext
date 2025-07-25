@@ -1,0 +1,464 @@
+name: Deploy Documentation to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev,research,agents,all]
+        pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints myst-parser
+        pip install sphinxcontrib-openapi sphinxcontrib-mermaid
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Create docs directory structure
+      run: |
+        mkdir -p docs/_static
+        mkdir -p docs/_templates
+        mkdir -p docs/api
+        mkdir -p docs/guides
+        mkdir -p docs/examples
+
+    - name: Generate API documentation
+      run: |
+        sphinx-apidoc -o docs/api openlongcontext --force --module-first
+
+    - name: Create Sphinx configuration
+      run: |
+        cat > docs/conf.py << 'EOF'
+        import os
+        import sys
+        sys.path.insert(0, os.path.abspath('..'))
+
+        project = 'OpenLongContext'
+        copyright = '2024, Nik Jois'
+        author = 'Nik Jois'
+        release = '1.0.0'
+
+        extensions = [
+            'sphinx.ext.autodoc',
+            'sphinx.ext.viewcode',
+            'sphinx.ext.napoleon',
+            'sphinx.ext.intersphinx',
+            'sphinx.ext.todo',
+            'sphinx.ext.coverage',
+            'sphinx.ext.mathjax',
+            'sphinx_rtd_theme',
+            'myst_parser',
+            'sphinxcontrib.openapi',
+            'sphinxcontrib.mermaid',
+        ]
+
+        templates_path = ['_templates']
+        exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+        html_theme = 'sphinx_rtd_theme'
+        html_static_path = ['_static']
+        html_logo = '../OpenContext.png'
+        html_favicon = '../OpenContext.png'
+
+        html_theme_options = {
+            'logo_only': True,
+            'display_version': True,
+            'prev_next_buttons_location': 'bottom',
+            'style_external_links': False,
+            'collapse_navigation': False,
+            'sticky_navigation': True,
+            'navigation_depth': 4,
+            'includehidden': True,
+            'titles_only': False
+        }
+
+        html_context = {
+            'display_github': True,
+            'github_user': 'openlongcontext',
+            'github_repo': 'openlongcontext',
+            'github_version': 'main',
+            'conf_py_path': '/docs/',
+        }
+
+        autodoc_default_options = {
+            'members': True,
+            'member-order': 'bysource',
+            'special-members': '__init__',
+            'undoc-members': True,
+            'exclude-members': '__weakref__'
+        }
+
+        napoleon_google_docstring = True
+        napoleon_numpy_docstring = True
+        napoleon_include_init_with_doc = False
+        napoleon_include_private_with_doc = False
+        napoleon_include_special_with_doc = True
+        napoleon_use_admonition_for_examples = False
+        napoleon_use_admonition_for_notes = False
+        napoleon_use_admonition_for_references = False
+        napoleon_use_ivar = False
+        napoleon_use_param = True
+        napoleon_use_rtype = True
+
+        intersphinx_mapping = {
+            'python': ('https://docs.python.org/3/', None),
+            'torch': ('https://pytorch.org/docs/stable/', None),
+            'transformers': ('https://huggingface.co/docs/transformers/', None),
+            'fastapi': ('https://fastapi.tiangolo.com/', None),
+        }
+
+        todo_include_todos = True
+        EOF
+
+    - name: Create main documentation index
+      run: |
+        cat > docs/index.rst << 'EOF'
+        OpenLongContext Documentation
+        ============================
+
+        .. image:: ../OpenContext.png
+           :alt: OpenLongContext Logo
+           :align: center
+           :width: 200px
+
+        OpenLongContext is a comprehensive, production-ready platform that combines cutting-edge long-context transformer models with OpenAI's agents SDK to deliver unparalleled document processing, question answering, and AI agent capabilities.
+
+        .. toctree::
+           :maxdepth: 2
+           :caption: Contents:
+
+           getting-started
+           guides/index
+           api/index
+           examples/index
+           contributing
+
+        Features
+        --------
+
+        * **Long-Context Processing**: Handle documents with millions of tokens
+        * **OpenAI Agents Integration**: Full SDK integration for advanced AI workflows
+        * **Production-Ready API**: FastAPI-based service with comprehensive error handling
+        * **Advanced Model Support**: BigBird, Longformer, Hyena, Transformer-XL
+        * **Comprehensive Testing**: 100% test coverage with integration and performance tests
+        * **Research Platform**: Complete ablation studies and scaling law analysis
+
+        Quick Start
+        -----------
+
+        Install OpenLongContext:
+
+        .. code-block:: bash
+
+           pip install openlongcontext[all]
+
+        Start the API server:
+
+        .. code-block:: bash
+
+           python -m openlongcontext.api
+
+        The API will be available at http://localhost:8000 with interactive docs at http://localhost:8000/docs
+
+        Indices and tables
+        ==================
+
+        * :ref:`genindex`
+        * :ref:`modindex`
+        * :ref:`search`
+        EOF
+
+    - name: Create getting started guide
+      run: |
+        cat > docs/getting-started.rst << 'EOF'
+        Getting Started
+        ===============
+
+        Installation
+        ------------
+
+        Basic Installation
+        ~~~~~~~~~~~~~~~~~~
+
+        .. code-block:: bash
+
+           pip install openlongcontext
+
+        Development Installation
+        ~~~~~~~~~~~~~~~~~~~~~~~~
+
+        .. code-block:: bash
+
+           git clone https://github.com/openlongcontext/openlongcontext.git
+           cd openlongcontext
+           pip install -e .[dev,research,agents,all]
+
+        Quick Start
+        -----------
+
+        Starting the API Server
+        ~~~~~~~~~~~~~~~~~~~~~~~~
+
+        .. code-block:: bash
+
+           # Start the FastAPI server
+           python -m openlongcontext.api
+
+           # Or with custom configuration
+           openlongcontext api-server --host 0.0.0.0 --port 8000
+
+        Basic Usage
+        ~~~~~~~~~~~
+
+        Document Processing:
+
+        .. code-block:: python
+
+           import requests
+
+           # Upload a document
+           with open("document.pdf", "rb") as f:
+               response = requests.post("http://localhost:8000/docs/upload", files={"file": f})
+               doc_id = response.json()["doc_id"]
+
+           # Query the document
+           query_response = requests.post("http://localhost:8000/docs/query", json={
+               "doc_id": doc_id,
+               "question": "What are the main findings?"
+           })
+           print(query_response.json()["answer"])
+
+        OpenAI Agents Integration:
+
+        .. code-block:: python
+
+           from openlongcontext.agents import OpenAIAgent, LongContextAgent
+           from openlongcontext.models import LongformerQA
+
+           # Initialize long-context model
+           model = LongformerQA.from_pretrained("allenai/longformer-base-4096")
+
+           # Create agent with long-context capabilities
+           agent = LongContextAgent(
+               model=model,
+               openai_client=OpenAIAgent(api_key="your-api-key"),
+               max_context_length=16384
+           )
+
+           # Process long document with agent
+           result = agent.process_document(
+               document_path="long_document.txt",
+               task="Summarize key insights"
+           )
+
+        Configuration
+        -------------
+
+        Environment Variables
+        ~~~~~~~~~~~~~~~~~~~~
+
+        * ``OPENAI_API_KEY``: Your OpenAI API key for agent functionality
+        * ``OPENLONGCONTEXT_LOG_LEVEL``: Logging level (DEBUG, INFO, WARNING, ERROR)
+        * ``OPENLONGCONTEXT_CACHE_DIR``: Directory for model and data caching
+
+        Configuration Files
+        ~~~~~~~~~~~~~~~~~~~
+
+        OpenLongContext uses YAML configuration files for experiments and model settings.
+        See the ``configs/`` directory for examples.
+        EOF
+
+    - name: Create guides index
+      run: |
+        mkdir -p docs/guides
+        cat > docs/guides/index.rst << 'EOF'
+        User Guides
+        ===========
+
+        .. toctree::
+           :maxdepth: 2
+
+           architecture
+           deployment
+           agents
+           models
+           experiments
+        EOF
+
+    - name: Create examples index
+      run: |
+        mkdir -p docs/examples
+        cat > docs/examples/index.rst << 'EOF'
+        Examples
+        ========
+
+        .. toctree::
+           :maxdepth: 2
+
+           basic-usage
+           agent-workflows
+           custom-models
+           scaling-experiments
+        EOF
+
+    - name: Create contributing guide
+      run: |
+        cat > docs/contributing.rst << 'EOF'
+        Contributing
+        ============
+
+        We welcome contributions to OpenLongContext! This guide will help you get started.
+
+        Development Setup
+        -----------------
+
+        1. Fork the repository on GitHub
+        2. Clone your fork locally:
+
+        .. code-block:: bash
+
+           git clone https://github.com/your-username/openlongcontext.git
+           cd openlongcontext
+
+        3. Create a virtual environment:
+
+        .. code-block:: bash
+
+           python -m venv venv
+           source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+        4. Install in development mode:
+
+        .. code-block:: bash
+
+           pip install -e .[dev,research,agents,all]
+
+        5. Install pre-commit hooks:
+
+        .. code-block:: bash
+
+           pre-commit install
+
+        Code Quality
+        ------------
+
+        We maintain high code quality standards:
+
+        * **Type Checking**: All code must pass mypy type checking
+        * **Formatting**: Code is formatted with black and isort
+        * **Linting**: We use flake8 for linting
+        * **Testing**: 100% test coverage is required
+        * **Documentation**: All public APIs must be documented
+
+        Running Tests
+        -------------
+
+        .. code-block:: bash
+
+           # Run all tests
+           pytest
+
+           # Run with coverage
+           pytest --cov=openlongcontext
+
+           # Run specific test categories
+           pytest tests/unit/
+           pytest tests/integration/
+           pytest tests/performance/
+
+        Submitting Changes
+        ------------------
+
+        1. Create a feature branch:
+
+        .. code-block:: bash
+
+           git checkout -b feature/amazing-feature
+
+        2. Make your changes with comprehensive tests
+        3. Ensure all tests pass and coverage is maintained
+        4. Run code quality checks:
+
+        .. code-block:: bash
+
+           black openlongcontext/ tests/
+           isort openlongcontext/ tests/
+           flake8 openlongcontext/ tests/
+           mypy openlongcontext/
+
+        5. Commit your changes:
+
+        .. code-block:: bash
+
+           git commit -m 'Add amazing feature'
+
+        6. Push to your fork:
+
+        .. code-block:: bash
+
+           git push origin feature/amazing-feature
+
+        7. Open a Pull Request on GitHub
+
+        Guidelines
+        ----------
+
+        * Follow PEP 8 style guidelines
+        * Write clear, descriptive commit messages
+        * Add tests for all new functionality
+        * Update documentation for any API changes
+        * Keep pull requests focused and atomic
+
+        Contact
+        -------
+
+        * **Issues**: `GitHub Issues <https://github.com/openlongcontext/openlongcontext/issues>`_
+        * **Discussions**: `GitHub Discussions <https://github.com/openlongcontext/openlongcontext/discussions>`_
+        * **Email**: nikjois@llamasearch.ai
+        EOF
+
+    - name: Build documentation with Sphinx
+      run: |
+        cd docs
+        sphinx-build -b html . _build/html
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: docs/_build/html
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build-docs
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2 

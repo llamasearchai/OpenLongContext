@@ -1,0 +1,219 @@
+site_name: OpenLongContext Documentation
+site_url: https://openlongcontext.github.io/openlongcontext/
+site_author: OpenLongContext Team
+site_description: Production-ready FastAPI service and research platform for long-context document QA and retrieval
+
+repo_name: openlongcontext/openlongcontext
+repo_url: https://github.com/openlongcontext/openlongcontext
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - announce.dismiss
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tabs.link
+    - content.tooltips
+    - header.autohide
+    - navigation.expand
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.path
+    - navigation.prune
+    - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - toc.integrate
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      separator: '[\s\-,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_signature_annotations: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            summary: true
+            merge_init_into_class: true
+            separate_signature: true
+            unwrap_annotated: true
+  - autorefs
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: timeago
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: openlongcontext
+      repo: openlongcontext
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      auto_append:
+        - includes/mkdocs.md
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section for reference
+
+extra:
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/openlongcontext
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/openlongcontext/
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/openlongcontext/openlongcontext
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Configuration: getting-started/configuration.md
+      - Tutorial: getting-started/tutorial.md
+  - User Guide:
+      - Overview: user-guide/overview.md
+      - Models:
+          - Available Models: user-guide/models/available-models.md
+          - Longformer: user-guide/models/longformer.md
+          - BigBird: user-guide/models/bigbird.md
+          - Custom Models: user-guide/models/custom-models.md
+      - Datasets:
+          - Built-in Datasets: user-guide/datasets/built-in.md
+          - Custom Datasets: user-guide/datasets/custom.md
+      - Agents:
+          - OpenAI Integration: user-guide/agents/openai.md
+          - Custom Agents: user-guide/agents/custom.md
+      - API:
+          - REST API: user-guide/api/rest.md
+          - Authentication: user-guide/api/authentication.md
+          - WebSockets: user-guide/api/websockets.md
+      - CLI:
+          - Commands: user-guide/cli/commands.md
+          - Experiments: user-guide/cli/experiments.md
+          - Analysis: user-guide/cli/analysis.md
+  - Developer Guide:
+      - Architecture: developer-guide/architecture.md
+      - Contributing: developer-guide/contributing.md
+      - Testing: developer-guide/testing.md
+      - Deployment: developer-guide/deployment.md
+      - Performance: developer-guide/performance.md
+  - API Reference:
+      - Overview: api/overview.md
+      - Models: api/models.md
+      - Datasets: api/datasets.md
+      - Agents: api/agents.md
+      - Algorithms: api/algorithms.md
+      - Evaluation: api/evaluation.md
+      - Utils: api/utils.md
+  - Examples:
+      - Basic Usage: examples/basic-usage.md
+      - Advanced Features: examples/advanced-features.md
+      - Notebooks: examples/notebooks.md
+      - Benchmarks: examples/benchmarks.md
+  - Theory:
+      - Scaling Laws: theory/scaling-laws.md
+      - Attention Mechanisms: theory/attention.md
+      - Memory Efficiency: theory/memory.md
+      - Capacity Analysis: theory/capacity.md
+  - FAQ: faq.md
+  - Changelog: changelog.md
+  - License: license.md
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

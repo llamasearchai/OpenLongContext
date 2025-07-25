@@ -1,0 +1,266 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openlongcontext"
+version = "1.0.0"
+description = "Ultimate Long-Context Scaling Research Platform for Principled Algorithmic and Empirical Study"
+authors = [
+    {name = "Nik Jois", email = "nikjois@llamasearch.ai"}
+]
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+keywords = [
+    "long-context", "scaling-laws", "transformer", "efficient-attention", 
+    "memory", "deep-learning", "openai", "agents", "fastapi", "nlp",
+    "question-answering", "document-processing", "ai", "ml", "research",
+    "bayesian-optimization", "ablation", "pytorch", "transformers"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Framework :: FastAPI",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "openai>=1.0.0",
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "transformers>=4.35.0",
+    "datasets>=2.14.0",
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "pandas>=2.1.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.0",
+    "pyyaml>=6.0.0",
+    "tqdm>=4.65.0",
+    "rich>=13.6.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+    "aiofiles>=23.0.0",
+    "scikit-learn>=1.3.0",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    "tiktoken>=0.5.0",
+    "asyncio-throttle>=1.0.0",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-xdist>=3.4.0",
+    "mypy>=1.6.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+    "black>=23.10.0",
+    "isort>=5.12.0",
+    "flake8>=6.1.0",
+    "pre-commit>=3.0.0",
+    "httpx>=0.25.0",
+]
+research = [
+    "wandb>=0.16.0",
+    "mlflow>=2.8.0",
+    "tensorboard>=2.15.0",
+    "jupyter>=1.0.0",
+    "jupyterlab>=4.0.0",
+    "notebook>=7.0.0",
+    "ipywidgets>=8.1.0",
+    "nbconvert>=7.0.0",
+    "optuna>=3.4.0",
+    "pymc>=5.9.0",
+    "ax-platform>=0.3.4",
+    "hyperopt>=0.2.7",
+]
+agents = [
+    "openai>=1.0.0",
+    "asyncio-throttle>=1.0.0",
+    "tiktoken>=0.5.0",
+    "langchain>=0.1.0",
+    "langchain-openai>=0.1.0",
+]
+all = [
+    # Dev dependencies
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-xdist>=3.4.0",
+    "mypy>=1.6.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+    "black>=23.10.0",
+    "isort>=5.12.0",
+    "flake8>=6.1.0",
+    "pre-commit>=3.0.0",
+    "httpx>=0.25.0",
+    # Research dependencies
+    "wandb>=0.16.0",
+    "mlflow>=2.8.0",
+    "tensorboard>=2.15.0",
+    "jupyter>=1.0.0",
+    "jupyterlab>=4.0.0",
+    "notebook>=7.0.0",
+    "ipywidgets>=8.1.0",
+    "nbconvert>=7.0.0",
+    "optuna>=3.4.0",
+    "pymc>=5.9.0",
+    "ax-platform>=0.3.4",
+    "hyperopt>=0.2.7",
+    # Agent dependencies
+    "langchain>=0.1.0",
+    "langchain-openai>=0.1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/llamasearchai/OpenLongContext"
+Documentation = "https://llamasearchai.github.io/OpenLongContext/"
+Repository = "https://github.com/llamasearchai/OpenLongContext"
+"Bug Tracker" = "https://github.com/llamasearchai/OpenLongContext/issues"
+Changelog = "https://github.com/llamasearchai/OpenLongContext/releases"
+
+[project.scripts]
+openlongcontext = "openlongcontext.cli:main"
+openlongcontext-experiment = "openlongcontext.cli.run_experiment:main"
+openlongcontext-sweep = "openlongcontext.cli.sweep:main"
+openlongcontext-analyze = "openlongcontext.cli.analyze_results:main"
+openlongcontext-ablate = "openlongcontext.cli.ablate:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openlongcontext*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501",  # line too long, handled by black
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "torch.*",
+    "transformers.*",
+    "datasets.*",
+    "sklearn.*",
+    "scipy.*",
+    "matplotlib.*",
+    "seaborn.*",
+    "wandb.*",
+    "mlflow.*",
+    "optuna.*",
+    "pymc.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "performance: marks tests as performance tests",
+]
+
+[tool.coverage.run]
+source = ["openlongcontext"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "setup.py",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\bProtocol\):",
+    "@(abc\.)?abstractmethod",
+]

@@ -1,0 +1,67 @@
+# Include documentation
+include README.md
+include LICENSE
+include CHANGELOG.md
+
+# Include configuration files
+include pyproject.toml
+include requirements.txt
+include setup.py
+include setup.cfg
+
+# Include all YAML configuration files
+recursive-include configs *.yaml *.yml
+
+# Include documentation
+recursive-include docs *.md *.rst *.txt
+
+# Include examples
+recursive-include examples *.py *.ipynb
+
+# Include tests
+recursive-include tests *.py *.json *.yaml *.txt
+recursive-include tests/fixtures *
+
+# Include scripts
+recursive-include scripts *.py *.sh
+
+# Include package data
+recursive-include openlongcontext *.json *.yaml *.yml
+
+# Exclude compiled files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
+global-exclude *.so
+global-exclude *.dylib
+global-exclude .DS_Store
+
+# Exclude version control
+global-exclude .git*
+global-exclude .svn
+
+# Exclude virtual environments
+prune venv
+prune .venv
+prune env
+
+# Exclude IDE files
+global-exclude .idea
+global-exclude .vscode
+global-exclude *.swp
+global-exclude *~
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+prune .coverage
+prune htmlcov
+
+# Exclude temporary files
+global-exclude *.log
+global-exclude *.tmp
+global-exclude *.temp

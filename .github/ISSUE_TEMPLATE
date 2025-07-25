@@ -1,0 +1,37 @@
+---
+name: Bug Report / Feature Request
+about: Report a bug, request a feature, or ask a question about OpenLongContext Document QA API
+labels: [bug, feature, question]
+assignees: Nik Jois
+
+---
+
+**Describe the issue or feature request**
+A clear and concise description of what the issue is, or what feature you would like to see.
+
+**API Endpoint or Component**
+- [ ] /docs/upload
+- [ ] /docs/query
+- [ ] /docs/{doc_id}
+- [ ] Model Inference
+- [ ] Deployment
+- [ ] Other (please specify)
+
+**Steps to Reproduce (for bugs)**
+1. ...
+2. ...
+3. ...
+
+**Expected Behavior**
+A clear and concise description of what you expected to happen.
+
+**Environment (please complete the following information):**
+- OS: [e.g. Ubuntu 20.04]
+- Python version: [e.g. 3.10]
+- OpenLongContext version: [e.g. 1.0.0]
+- Deployment: [e.g. local, Docker, cloud]
+
+**Additional Context**
+Add any other context about the problem or request here.
+
+**Author:** Nik Jois (<nikjois@llamasearch.ai>)
