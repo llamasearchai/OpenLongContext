@@ -1,0 +1,14 @@
+# CUDA-specific dependencies
+# Install with: pip install -r requirements-cuda.txt
+
+# Flash Attention (CUDA only)
+flash-attn>=2.3.0
+
+# Triton (CUDA compiler)
+triton>=2.1.0
+
+# NVIDIA Apex (mixed precision training)
+apex>=0.1
+
+# BitsAndBytes (quantization)
+bitsandbytes>=0.41.0 

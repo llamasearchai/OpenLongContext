@@ -1,0 +1,8 @@
+# MLX (Apple Silicon) dependencies
+# Install with: pip install -r requirements-mlx.txt
+
+# MLX core framework
+mlx>=0.0.1
+
+# MLX language models
+mlx-lm>=0.0.1 
