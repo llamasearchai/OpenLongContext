@@ -75,7 +75,7 @@ dev = [
     "isort>=5.12.0",
     "flake8>=6.1.0",
     "pre-commit>=3.0.0",
-    "httpx>=0.25.0",
+    "httpx>=0.28.1",
 ]
 research = [
     "wandb>=0.16.0",
@@ -111,7 +111,7 @@ all = [
     "isort>=5.12.0",
     "flake8>=6.1.0",
     "pre-commit>=3.0.0",
-    "httpx>=0.25.0",
+    "httpx>=0.28.1",
     # Research dependencies
     "wandb>=0.16.0",
     "mlflow>=2.8.0",
