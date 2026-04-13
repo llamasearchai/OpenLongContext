@@ -78,7 +78,7 @@ dev = [
     "httpx>=0.25.0",
 ]
 research = [
-    "wandb>=0.16.0",
+    "wandb>=0.25.1",
     "mlflow>=2.8.0",
     "tensorboard>=2.15.0",
     "jupyter>=1.0.0",
@@ -113,7 +113,7 @@ all = [
     "pre-commit>=3.0.0",
     "httpx>=0.25.0",
     # Research dependencies
-    "wandb>=0.16.0",
+    "wandb>=0.25.1",
     "mlflow>=2.8.0",
     "tensorboard>=2.15.0",
     "jupyter>=1.0.0",
